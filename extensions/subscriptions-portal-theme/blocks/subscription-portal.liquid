@@ -3,19 +3,30 @@
   data-app="subscriptions-portal"
   data-endpoint="{{ block.settings.endpoint }}"
   data-debug="{{ block.settings.debug }}"
+  data-portal-page="{{ block.settings.portal_page_path }}"
 >
   {% if block.settings.heading != blank %}
     <h2>{{ block.settings.heading }}</h2>
   {% endif %}
 
   {% unless customer %}
+    {%- assign return_to = request.path -%}
+    {%- if request.query_string != blank -%}
+      {%- assign return_to = return_to | append: '?' | append: request.query_string -%}
+    {%- endif -%}
+
     {% if block.settings.redirect_to_login %}
-      {%- assign return_to = request.path | append: request.query_string -%}
-      <meta http-equiv="refresh" content="0; url={{ routes.account_login_url }}?return_url={{ return_to | url_encode }}">
+      <meta
+        http-equiv="refresh"
+        content="0; url={{ routes.account_login_url }}?return_url={{ return_to | url_encode }}"
+      >
       <script>
-        (function(){
+        (function () {
           var returnTo = {{ return_to | json }};
-          window.location.href = {{ routes.account_login_url | json }} + "?return_url=" + encodeURIComponent(returnTo);
+          window.location.href =
+            {{ routes.account_login_url | json }} +
+            "?return_url=" +
+            encodeURIComponent(returnTo);
         })();
       </script>
       <p>Redirecting to login…</p>
@@ -23,7 +34,7 @@
       <div style="padding:14px;border:1px solid #e5e7eb;border-radius:12px;">
         <p><strong>Please log in</strong> to manage your subscriptions.</p>
         <p style="margin-top:10px;">
-          <a href="{{ routes.account_login_url }}?return_url={{ request.path | url_encode }}">
+          <a href="{{ routes.account_login_url }}?return_url={{ return_to | url_encode }}">
             Log in
           </a>
         </p>
@@ -54,6 +65,13 @@
   "target": "section",
   "settings": [
     { "type": "text", "id": "heading", "label": "Heading", "default": "Manage your subscriptions" },
+    {
+      "type": "text",
+      "id": "portal_page_path",
+      "label": "Portal page path",
+      "default": "/pages/portal",
+      "info": "Where this portal lives (example: /pages/portal). Used to map /pages/portal/* -> /apps/portal/*."
+    },
     {
       "type": "text",
       "id": "endpoint",

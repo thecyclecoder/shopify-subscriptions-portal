@@ -1,19 +1,26 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "729f01e2a8ffbce1c81871c5e2d8e9ac"
-name = "Subscriptions Portal Theme"
-application_url = "https://shopify.dev/apps/default-app-home"
+client_id = "7ce85f1d1e501b5c51b0fb6fb7f810c2"
+name = "Subscriptions Portal" # optional, but recommended to match
+application_url = "https://subscriptions-portal-nine.vercel.app/admin/"
 embedded = true
 
 [build]
-automatically_update_urls_on_dev = true
+automatically_update_urls_on_dev = false
 
 [webhooks]
-api_version = "2026-04"
+api_version = "2026-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+scopes = "read_channels,read_customers,read_orders"
+optional_scopes = [ ]
+use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [ ]
+
+[app_proxy]
+url = "https://subscriptions-portal-nine.vercel.app/subscriptions"
+subpath = "portal"
+prefix = "apps"
