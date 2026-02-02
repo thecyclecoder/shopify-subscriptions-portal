@@ -4,6 +4,10 @@
   data-endpoint="{{ block.settings.endpoint }}"
   data-debug="{{ block.settings.debug }}"
   data-portal-page="{{ block.settings.portal_page_path }}"
+  {% if customer %}
+    data-first-name="{{ customer.first_name | escape }}"
+    data-email="{{ customer.email | escape }}"
+  {% endif %}
 >
   {% if block.settings.heading != blank %}
     <h2>{{ block.settings.heading }}</h2>
@@ -55,7 +59,7 @@
       {% endif %}
     </div>
 
-    {{ 'subscription-portal.js' | asset_url | script_tag }}
+    <script src="{{ 'subscription-portal.js' | asset_url }}" defer></script>
   {% endunless %}
 </div>
 

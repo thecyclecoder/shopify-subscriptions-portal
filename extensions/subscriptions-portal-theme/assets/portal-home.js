@@ -16,7 +16,6 @@
   }
 
   function card(html) {
-    // Prefer UI helper if you already have it
     if (window.__SP.ui && typeof window.__SP.ui.card === "function") {
       return window.__SP.ui.card(html);
     }
@@ -34,14 +33,6 @@
     }
     var root = window.__SP.root;
     if (root) root.innerHTML = html;
-  }
-
-  function pill(text) {
-    return (
-      '<div style="padding:10px 12px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;font-size:16px;font-weight:800;color:#111827;">' +
-      esc(text) +
-      "</div>"
-    );
   }
 
   function btn(href, text, variant) {
@@ -81,22 +72,13 @@
     return "";
   }
 
-  async function fetchHome() {
-    var base = (window.__SP && window.__SP.endpoint) || "/apps/portal";
-    var url = base.replace(/\/$/, "") + "/home";
-
-    var res = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    });
-
-    var ct = (res.headers.get("content-type") || "").toLowerCase();
-    var body = ct.includes("application/json") ? await res.json() : await res.text();
-
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return body;
+async function fetchHome() {
+  if (!window.__SP.api || typeof window.__SP.api.requestJson !== "function") {
+    throw new Error("API not loaded");
   }
+  // route=home (handled by /subscriptions/route.ts)
+  return await window.__SP.api.requestJson("home");
+}
 
   function renderHome(data) {
     if (!data || data.ok !== true) {
@@ -110,104 +92,67 @@
     }
 
     var customer = data.customer || {};
-    var name = formatName(customer);
+    var name = window.__SP.el.getAttribute("data-first-name");
     var greeting = name ? "Welcome back, " + esc(name) : "Welcome back";
 
     var summary = data.summary || {};
     var activeCount = summary.active_count || 0;
-    var cancelledCount = summary.cancelled_count || 0;
-    var isEarly = !!summary.is_early_journey;
 
     var header =
       "<div style='display:flex;align-items:center;justify-content:space-between;gap:12px;'>" +
-      "<div>" +
-      "<div style='font-size:34px;line-height:1.1;font-weight:900;margin:0;'>" +
-      greeting +
-      "</div>" +
-      "<div style='font-size:19px;color:#6b7280;margin-top:6px;font-weight:600;'>Let’s keep your results rolling.</div>" +
-      "</div>" +
-      "<div>" +
-      "<span style='display:inline-block;padding:8px 12px;border-radius:999px;background:#f3f4f6;font-weight:700;font-size:14px;color:#374151;'>Secure portal</span>" +
-      "</div>" +
+        "<div>" +
+          "<div style='font-size:34px;line-height:1.1;font-weight:900;margin:0;'>" + greeting + "</div>" +
+          "<div style='font-size:19px;color:#6b7280;margin-top:6px;font-weight:600;'>Let’s keep your results rolling.</div>" +
+        "</div>" +
+        "<div>" +
+          "<span style='display:inline-block;padding:8px 12px;border-radius:999px;background:#f3f4f6;font-weight:800;font-size:14px;color:#374151;'>Secure portal</span>" +
+        "</div>" +
       "</div>";
 
     var emailLine = customer.email
-      ? "<div style='margin-top:10px;font-size:15px;color:#9ca3af;font-weight:600;'>Signed in as " +
-        esc(customer.email) +
-        "</div>"
+      ? "<div style='margin-top:10px;font-size:15px;color:#9ca3af;font-weight:600;'>Signed in as " + esc(customer.email) + "</div>"
       : "";
 
-    var trust = card(
-      "<div style='display:flex;gap:12px;align-items:flex-start;'>" +
-        "<div style='font-size:22px;line-height:1;'>🔒</div>" +
-        "<div>" +
-        "<div style='font-size:18px;font-weight:900;margin:0 0 4px;'>Your subscription info is protected</div>" +
-        "<div style='font-size:17px;color:#6b7280;font-weight:600;'>We only show and update subscriptions for the account you’re logged into.</div>" +
-        "</div>" +
-        "</div>"
-    );
-
-    var counts = card(
-      "<div style='display:flex;gap:12px;flex-wrap:wrap;'>" +
-        pill(activeCount + " active") +
-        pill(cancelledCount + " cancelled") +
-        "</div>"
-    );
-
-    var stayTheCourse = "";
-    if (isEarly) {
-      stayTheCourse = card(
-        "<div style='font-size:18px;font-weight:900;margin-bottom:6px;'>Before you make changes…</div>" +
-          "<div style='font-size:17px;color:#6b7280;font-weight:600;'>Most customers see the best results when they stay consistent. If you’re early in your journey, consider pausing instead of canceling.</div>"
-      );
-    }
-
-    var actions = card(
-      "<div style='display:grid;gap:12px;'>" +
-        btn("/portal/subscriptions?status=active", "View active subscriptions", "primary") +
-        btn("/portal/subscriptions?status=cancelled", "See cancelled (reactivate)", "secondary") +
-        "</div>"
-    );
-
-    setRoot(
-      "<div style='display:grid;gap:16px;'>" +
-        card(header + emailLine) +
-        trust +
-        counts +
-        stayTheCourse +
-        actions +
-      "</div>"
-    );
-  }
-
-  function render() {
-    // Design mode safety
-    if (window.__SP && window.__SP.isDesignMode) {
-      setRoot(
-        "<p style='color:#6b7280;font-weight:600;font-size:16px;'>Preview mode: portal data loads on the live storefront.</p>"
-      );
-      return;
-    }
+    var actions =
+      "<div style='display:grid;gap:12px;margin-top:16px;'>" +
+        btn("/pages/portal/subscriptions?status=active", "View active subscriptions (" + activeCount + ")", "primary") +
+        btn("/pages/portal/subscriptions?status=cancelled", "See cancelled (reactivate)", "secondary") +
+      "</div>";
 
     setRoot(
       card(
-        "<div style='font-size:18px;font-weight:800;margin-bottom:6px;'>Loading…</div>" +
-          "<div style='font-size:17px;color:#6b7280;font-weight:600;'>Getting your subscription details.</div>"
+        header +
+        emailLine +
+        "<div style='margin-top:14px;font-size:17px;color:#374151;font-weight:650;'>" +
+          "This is a secure subscription portal. Updates made here apply directly to your next shipment." +
+        "</div>" +
+        actions
       )
     );
-
-    fetchHome()
-      .then(renderHome)
-      .catch(function () {
-        setRoot(
-          card(
-            "<div style='font-size:18px;font-weight:900;margin-bottom:6px;'>Could not load portal</div>" +
-              "<div style='font-size:17px;color:#6b7280;font-weight:600;'>Please refresh. If this keeps happening, contact support.</div>"
-          )
-        );
-      });
   }
 
-  // ✅ This is what your router expects
+  async function render() {
+    // nice loading state
+    setRoot(
+      card("<div style='font-size:18px;font-weight:900;'>Loading your portal…</div>")
+    );
+
+    try {
+      var data = await fetchHome();
+      renderHome(data);
+    } catch (err) {
+      console.error("[Portal] home error:", err);
+      setRoot(
+        card(
+          "<div style='font-size:28px;font-weight:950;margin-bottom:6px;'>Could not load portal</div>" +
+          "<div style='font-size:17px;color:#6b7280;font-weight:650;'>Please refresh. If this keeps happening, contact support.</div>" +
+          "<pre style='margin-top:14px;white-space:pre-wrap;font-size:14px;background:#0b1020;color:#fff;padding:12px;border-radius:14px;overflow:auto;'>" +
+          esc(String(err && err.stack ? err.stack : err)) +
+          "</pre>"
+        )
+      );
+    }
+  }
+
   window.__SP.screens.home = { render: render };
 })();

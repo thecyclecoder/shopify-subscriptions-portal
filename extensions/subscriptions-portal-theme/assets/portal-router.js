@@ -1,20 +1,41 @@
 (function () {
   window.__SP = window.__SP || {};
 
-  function start() {
-    var root = window.__SP.root;
-    if (!root) return;
+  function safeRender(screenKey) {
+    var ui = window.__SP.ui;
+    var screens = window.__SP.screens || {};
+    var screen = screens[screenKey];
 
-    // Ensure we render correct screen on back/forward too
+    if (screen && typeof screen.render === "function") {
+      return screen.render();
+    }
+
+    try { console.warn("[Portal Router] Missing screen:", screenKey, screen); } catch (e) {}
+
+    if (ui) {
+      ui.setRoot(
+        ui.card(
+          "<div class='sp-wrap'>" +
+            "<h2 class='sp-title'>Loading…</h2>" +
+            "<p class='sp-muted'>The portal is still loading. Please refresh.</p>" +
+            (window.__SP.debug ? "<p class='sp-muted'>Missing screen: <code>" + screenKey + "</code></p>" : "") +
+          "</div>"
+        )
+      );
+    }
+  }
+
+  function start() {
+    if (!window.__SP.root) return;
+
     window.addEventListener("popstate", route);
 
-    // Intercept internal portal links so the URL changes WITHOUT full page reload
     document.addEventListener("click", function (e) {
       var a = e.target && e.target.closest ? e.target.closest("a") : null;
       if (!a) return;
 
       var href = a.getAttribute("href") || "";
-      if (!href.startsWith("/portal")) return;
+      if (!href.startsWith("/pages/portal")) return;
 
       e.preventDefault();
       window.history.pushState({}, "", href);
@@ -28,25 +49,19 @@
     var path = window.location.pathname;
 
     // Support Shopify page route too
-    // If the real path is /pages/portal but you redirect to /portal later, this still works.
-    if (path === "/pages/portal") path = "/portal";
 
-    if (path === "/portal" || path === "/portal/") {
-      return window.__SP.screens.home.render();
+
+    if (path === "/pages/portal" || path === "/pages/portal/") return safeRender("home");
+    if (path.startsWith("/pages/portal/subscriptions")) return safeRender("subscriptions");
+    if (path.startsWith("/pages/portal/subscription/")) return safeRender("subscriptionDetail");
+
+    if (window.__SP.ui) {
+      window.__SP.ui.setRoot(
+        window.__SP.ui.card(
+          "<div class='sp-wrap'><h2 class='sp-title'>Not found</h2><p class='sp-muted'>That portal page does not exist.</p></div>"
+        )
+      );
     }
-
-    if (path.startsWith("/portal/subscriptions")) {
-      return window.__SP.screens.subscriptions.render();
-    }
-
-    if (path.startsWith("/portal/subscription/")) {
-      return window.__SP.screens.subscriptionDetail.render();
-    }
-
-    // Default
-    window.__SP.ui.setRoot(window.__SP.ui.card(
-      "<div class='sp-wrap'><h2 class='sp-title'>Not found</h2><p class='sp-muted'>That portal page does not exist.</p></div>"
-    ));
   }
 
   window.__SP.router = { start: start };

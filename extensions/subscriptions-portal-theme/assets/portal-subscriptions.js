@@ -22,9 +22,9 @@
       ]),
       ui.el("div", { class: "sp-card" }, [
         ui.el("div", { class: "sp-row" }, [
-          ui.el("a", { class: "sp-btn sp-btn--ghost", href: "/portal/subscriptions?status=active" }, ["Active"]),
-          ui.el("a", { class: "sp-btn sp-btn--ghost", href: "/portal/subscriptions?status=cancelled" }, ["Cancelled"]),
-          ui.el("a", { class: "sp-btn sp-btn--ghost", href: "/portal/subscriptions?status=all" }, ["All (limit 5)"])
+          ui.el("a", { class: "sp-btn sp-btn--ghost", href: "/pages/portal/subscriptions?status=active" }, ["Active"]),
+          ui.el("a", { class: "sp-btn sp-btn--ghost", href: "/pages/portal/subscriptions?status=cancelled" }, ["Cancelled"]),
+          ui.el("a", { class: "sp-btn sp-btn--ghost", href: "/pages/portal/subscriptions?status=all" }, ["All (limit 5)"])
         ]),
         ui.el("p", { class: "sp-muted", style: "margin-top:10px;" }, [
           "Next: render cards for contracts. Cancelled list should only fetch when status=cancelled."

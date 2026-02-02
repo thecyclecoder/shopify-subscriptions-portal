@@ -14,73 +14,77 @@
     });
   }
 
-  function el(tag, attrs, children) {
-    var node = document.createElement(tag);
-    attrs = attrs || {};
-    Object.keys(attrs).forEach(function (k) {
-      if (k === "class") node.className = attrs[k];
-      else if (k === "html") node.innerHTML = attrs[k];
-      else node.setAttribute(k, attrs[k]);
-    });
-    (children || []).forEach(function (c) {
-      if (c == null) return;
-      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
-    });
-    return node;
+  function ensureStyles() {
+    if (document.getElementById("sp-ui-styles")) return;
+
+    var css = ""
+      + ".sp-card{border:1px solid #e5e7eb;border-radius:16px;padding:18px;background:#fff;}"
+      + ".sp-stack{display:flex;flex-direction:column;gap:16px;}"
+      + ".sp-wrap{font-size:17px;line-height:1.4;}"
+      + ".sp-title{font-size:26px;font-weight:800;letter-spacing:-0.02em;margin:0 0 6px;}"
+      + ".sp-title2{font-size:20px;font-weight:800;margin:0 0 4px;}"
+      + ".sp-muted{color:#6b7280;margin:0;}"
+      + ".sp-hero{border:1px solid #e5e7eb;border-radius:18px;padding:18px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;}"
+      + ".sp-pill{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;background:#f3f4f6;color:#444;font-weight:700;font-size:14px;white-space:nowrap;}"
+      + ".sp-row{display:flex;gap:12px;align-items:flex-start;}"
+      + ".sp-icon{font-size:20px;line-height:1;}"
+      + ".sp-actions{display:flex;flex-direction:column;gap:12px;}"
+      + ".sp-btn{display:block;text-align:center;padding:14px 14px;border-radius:14px;border:1px solid #e5e7eb;background:#fff;font-size:18px;font-weight:800;text-decoration:none;color:#111;}"
+      + ".sp-btn:hover{opacity:0.96;}"
+      + ".sp-btn-primary{border-color:#111;}"
+      + ".sp-pre{white-space:pre-wrap;background:#0b1020;color:#e5e7eb;padding:12px;border-radius:12px;font-size:13px;overflow:auto;margin-top:12px;}"
+      ;
+
+    var style = document.createElement("style");
+    style.id = "sp-ui-styles";
+    style.textContent = css;
+    document.head.appendChild(style);
   }
 
-  function setRoot(contentNode) {
-    var root = window.__SP.root;
+  function setRoot(htmlOrEl) {
+    ensureStyles();
+    var root = window.__SP && window.__SP.root;
     if (!root) return;
+
+    if (typeof htmlOrEl === "string") {
+      root.innerHTML = htmlOrEl;
+      return;
+    }
+
+    // DOM node
     root.innerHTML = "";
-    root.appendChild(contentNode);
+    root.appendChild(htmlOrEl);
   }
 
   function card(innerHtml) {
-    return el("div", {
-      class: "sp-card",
-      html: innerHtml
-    });
+    return "<div class='sp-card'><div class='sp-wrap'>" + innerHtml + "</div></div>";
   }
 
-  function message(text) {
-    return el("p", { class: "sp-muted" }, [text]);
+  function hero(title, subtitle, pillText) {
+    return ""
+      + "<div class='sp-hero'>"
+      + "  <div class='sp-wrap'>"
+      + "    <h2 class='sp-title'>" + escapeHtml(title || "") + "</h2>"
+      + "    <p class='sp-muted'>" + escapeHtml(subtitle || "") + "</p>"
+      + "  </div>"
+      + "  " + (pillText ? "<div class='sp-pill'>" + escapeHtml(pillText) + "</div>" : "")
+      + "</div>";
   }
 
-  function loading(text) {
-    return el("div", { class: "sp-loading" }, [
-      el("p", { class: "sp-muted" }, [text || "Loading…"])
-    ]);
-  }
-
-  // Minimal styles injected once (keeps 17px+ readable base)
-  function ensureBaseStyles() {
-    if (document.getElementById("sp-base-styles")) return;
-    var style = el("style", { id: "sp-base-styles", html: `
-      .sp-wrap { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size: 17px; line-height: 1.4; }
-      .sp-grid { display: grid; gap: 14px; }
-      .sp-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #fff; }
-      .sp-title { font-size: 22px; margin: 0 0 6px; }
-      .sp-muted { color: #6b7280; margin: 0; }
-      .sp-row { display:flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
-      .sp-btn { display:inline-block; border:1px solid #111827; border-radius: 12px; padding: 10px 14px; text-decoration:none; font-weight: 600; }
-      .sp-btn--ghost { border-color:#e5e7eb; color:#111827; }
-      .sp-pill { display:inline-block; padding: 6px 10px; border-radius: 999px; background:#f3f4f6; font-weight: 600; font-size: 14px; }
-      .sp-loading { padding: 10px 0; }
-      @media (min-width: 800px) {
-        .sp-grid--2 { grid-template-columns: 1fr 1fr; }
-      }
-    `});
-    document.head.appendChild(style);
+  function stack(parts) {
+    parts = Array.isArray(parts) ? parts : [];
+    return "<div class='sp-stack'>" + parts.join("") + "</div>";
   }
 
   window.__SP.ui = {
     escapeHtml: escapeHtml,
-    el: el,
     setRoot: setRoot,
     card: card,
-    message: message,
-    loading: loading,
-    ensureBaseStyles: ensureBaseStyles
+    hero: hero,
+    stack: stack
   };
+
+  if (window.__SP && window.__SP.debug) {
+    try { console.log("[Portal UI] Loaded. hero/card/stack/setRoot ready."); } catch (e) {}
+  }
 })();
