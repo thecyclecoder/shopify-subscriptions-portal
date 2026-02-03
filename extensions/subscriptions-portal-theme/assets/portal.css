@@ -1,0 +1,910 @@
+/* ------------------------------------------------------------------
+   Portal base layout
+------------------------------------------------------------------- */
+
+/* You can optionally constrain width for a cleaner desktop look */
+:root{
+  --sp-border: #e5e7eb;
+  --sp-bg: #ffffff;
+  --sp-text: #111827;
+  --sp-muted: #6b7280;
+
+  --sp-card-radius: 18px;
+  --sp-btn-radius: 14px;
+
+  --sp-shadow: 0 1px 0 rgba(0,0,0,.02);
+  --sp-shadow2: 0 12px 30px rgba(17,24,39,.06);
+
+  --sp-pad: 18px;
+}
+
+.sp-wrap {
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--sp-text);
+
+
+}
+
+.subscriptions-portal {
+    margin-bottom: 56px;
+    min-height: 500px;
+}
+
+/* Portal page heading + secure pill line */
+.sp-page-title{
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.sp-page-subhead{
+  display:flex;
+  justify-content:center;
+  margin-bottom:18px;
+}
+
+/* Slightly more breathing room on mobile */
+@media (max-width: 768px) {
+  .subscriptions-portal {
+    margin-bottom: 30px;
+  }
+}
+
+/* A nice page container (if you wrap screens with .sp-page or .sp-wrap sp-grid) */
+.sp-page{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------
+   Core components (previously injected by portal-ui.js)
+------------------------------------------------------------------- */
+
+.sp-card{
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-card-radius);
+  padding: var(--sp-pad);
+  background: var(--sp-bg);
+  box-shadow: var(--sp-shadow);
+}
+
+.sp-stack{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.sp-title{
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.sp-title2{
+  font-size: 20px;
+  font-weight: 900;
+  margin: 0 0 4px;
+}
+
+.sp-muted{
+  color: var(--sp-muted);
+  margin: 0;
+}
+
+.sp-hero{
+  border: 1px solid var(--sp-border);
+  border-radius: calc(var(--sp-card-radius) + 2px);
+  padding: var(--sp-pad);
+  background: #fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  box-shadow: var(--sp-shadow);
+}
+
+.sp-hero-left{min-width: 0;}
+
+.sp-row{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+
+.sp-actions{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.sp-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 900px){
+  .sp-grid{ grid-template-columns: 1fr 1fr; }
+}
+
+/* Buttons */
+.sp-btn{
+  display:block;
+  text-align:center;
+  padding: 14px 14px;
+  border-radius: var(--sp-btn-radius);
+  border: 1px solid var(--sp-border);
+  background: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  text-decoration:none;
+  color: var(--sp-text);
+  touch-action: manipulation;
+  transition: transform .08s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.sp-btn:hover{
+  box-shadow: 0 8px 18px rgba(17,24,39,.06);
+  transform: translateY(-1px);
+}
+
+.sp-btn:active{
+  transform: translateY(0px);
+  box-shadow: 0 2px 10px rgba(17,24,39,.06);
+}
+
+.sp-btn:focus{
+  outline: none;
+}
+
+.sp-btn:focus-visible{
+  outline: 3px solid rgba(17,24,39,.18);
+  outline-offset: 2px;
+}
+
+.sp-btn-primary{
+  border-color: #111827;
+}
+
+.sp-btn--ghost{
+  border: 1px solid var(--sp-border);
+  background: #f9fafb;
+  color: var(--sp-text);
+}
+
+.sp-pre{
+  white-space: pre-wrap;
+  background: #0b1020;
+  color: #e5e7eb;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  overflow: auto;
+  margin-top: 12px;
+}
+
+.sp-loading{
+  font-weight: 900;
+  font-size: 18px;
+}
+
+/* ------------------------------------------------------------------
+   Pills (global)
+------------------------------------------------------------------- */
+
+.sp-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  padding: 6px 10px;              /* smaller than base UI */
+  border-radius: 999px;
+
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 900;
+
+  white-space: nowrap;
+}
+
+/* Status variants */
+.sp-pill--active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.sp-pill--cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sp-pill--neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ------------------------------------------------------------------
+   Secure portal pill (header)
+------------------------------------------------------------------- */
+
+.sp-pill--secure {
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  padding: 6px 10px;
+  font-weight: 900;
+    border:1px solid #e5e7eb;
+  box-shadow:0 1px 0 rgba(0,0,0,.02);
+}
+
+/* ------------------------------------------------------------------
+   Mobile tightening (never wrap pills)
+------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .sp-pill {
+    font-size: 12px;
+    padding: 5px 9px;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Home screen polish (matches your current DOM: .sp-home-*)
+   If your portal-home.js already outputs these classes, this will apply.
+------------------------------------------------------------------- */
+
+.sp-home-shell{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.sp-home-title{
+  font-size: 34px;
+  line-height: 1.12;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.sp-home-subtitle{
+  font-size: 19px;
+  color: var(--sp-muted);
+  font-weight: 650;
+  margin-top: 6px;
+}
+
+.sp-home-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+}
+
+.sp-home-header-right{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+/* Keep secure pill tight so it stays 1 line on mobile */
+@media (max-width: 520px){
+  .sp-home-title{ font-size: 30px; }
+  .sp-home-subtitle{ font-size: 17px; }
+  .sp-pill--secure{ font-size: 11.5px; padding: 5px 8px; }
+}
+
+.sp-home-email{
+  margin-top: 10px;
+  font-size: 15px;
+  color: #9ca3af;
+  font-weight: 650;
+}
+
+.sp-home-body{
+  margin-top: 14px;
+  font-size: 17px;
+  color: #374151;
+  font-weight: 650;
+}
+
+.sp-home-actions{
+  display:grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Make the main card feel more premium */
+.sp-card.sp-card--heroish{
+  box-shadow: var(--sp-shadow2);
+}
+
+/* Buttons slightly tighter on small screens */
+@media (max-width: 480px){
+  .sp-btn{
+    font-size: 17px;
+    padding: 13px 14px;
+    border-radius: 16px;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Subscription list polish (works with portal-subscriptions.js)
+------------------------------------------------------------------- */
+
+.sp-wrap .sp-card{
+  background: #fff;
+}
+
+.sp-pill{
+  border: 1px solid var(--sp-border);
+}
+
+/* Make list cards look a bit sharper */
+.sp-card .sp-card{
+  box-shadow: none;
+}
+
+/* Optional: nicer image frames already used in JS inline styles */
+.sp-thumb{
+  width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--sp-border);
+}
+
+/* ------------------------------------------------------------------
+   Small quality-of-life
+------------------------------------------------------------------- */
+
+.sp-btn--ghost{
+  font-size: 16px;
+  font-weight: 900;
+}
+
+/* ------------------------------------------------------------------
+   Subscriptions screen
+------------------------------------------------------------------- */
+
+.sp-subs-page{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.sp-subs-header{
+  box-shadow: var(--sp-shadow2);
+}
+
+.sp-subs-status{
+  margin-top: 6px;
+}
+
+.sp-subs-tabs{
+  margin-top: 12px;
+}
+
+
+
+.sp-tab{
+padding: 10px 12px;
+    font-size: 15px;
+    font-weight: 900;
+    border-radius: 999px;
+    border: 1px solid #ccc;
+    color: #555;
+    text-decoration: none;
+    background: #fafafa;
+    text-align: center;
+}
+
+.sp-subs-header__tabs {
+    margin-top: 5px;
+}
+
+@media (max-width: 520px){
+  .sp-tabs{
+    gap: 8px;
+  }
+  .sp-tab{
+    flex: 1;
+    min-width: 0;
+    padding: 10px 10px;
+    font-size: 14px;
+  }
+}
+
+/* List wrapper spacing */
+.sp-subs-list{
+  margin-top: 14px;
+}
+
+/* ------------------------------------------------------------------
+   Subscription card
+------------------------------------------------------------------- */
+
+.sp-subcard{
+  transition: transform .08s ease, box-shadow .12s ease;
+}
+
+.sp-subcard:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(17,24,39,.08);
+}
+
+.sp-subcard-header{
+  display:flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sp-subcard-titlewrap{
+  min-width: 0;
+}
+
+.sp-subcard-title{
+  font-weight: 950;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.sp-subcard-meta{
+  margin-top: 6px;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------
+   Lines list
+------------------------------------------------------------------- */
+
+.sp-subcard-lines{
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.sp-subcard-emptyline{
+  margin: 0;
+  font-weight: 650;
+}
+
+.sp-line{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  border: 1px solid var(--sp-border);
+  border-radius: 14px;
+  padding: 10px;
+  background: #fff;
+}
+
+.sp-line-img{
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--sp-border);
+  flex: 0 0 auto;
+}
+
+.sp-line-img--placeholder{
+  background: #f3f4f6;
+}
+
+.sp-line-meta{
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-line-title{
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.sp-line-sub{
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.sp-line-price{
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Actions row
+------------------------------------------------------------------- */
+
+.sp-subcard-actions{
+  margin-top: 12px;
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sp-subcard-origin{
+  font-weight: 650;
+}
+
+/* ------------------------------------------------------------------
+   Empty state
+------------------------------------------------------------------- */
+
+.sp-empty-title{
+  font-weight: 950;
+  font-size: 18px;
+}
+
+.sp-empty-body{
+  margin-top: 8px;
+  font-weight: 650;
+}
+
+/* ------------------------------------------------------------------
+   Mobile tightening
+------------------------------------------------------------------- */
+
+@media (max-width: 480px){
+  .sp-subcard-title{
+    font-size: 17px;
+  }
+  .sp-line{
+    padding: 10px;
+  }
+  .sp-line-img{
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+  }
+  .sp-line-price{
+    font-size: 15px;
+  }
+}
+
+/* Tabs row */
+.sp-tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+/* Active tab highlight */
+.sp-tab.is-active{
+  border-color:#111827 !important;
+  background:#ffffff !important;
+  box-shadow:0 1px 0 rgba(0,0,0,.04);
+  color: #000;
+}
+/* ------------------------------------------------------------------
+   Home screen CTA layout (desktop: side-by-side, centered)
+------------------------------------------------------------------- */
+
+/* Wrap the action buttons in a container class (recommended) */
+.sp-home-actions {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  /* keeps the buttons from becoming huge on wide screens */
+ 
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Desktop: buttons side-by-side and centered */
+@media (min-width: 900px) {
+  .sp-home-actions {
+    flex-direction: row;
+    justify-content: start;
+    align-items: stretch;
+  }
+
+  .sp-home-actions .sp-btn {
+    flex: 0 1 320px;   /* each button max-ish width */
+    width: 320px;      /* hard cap for consistent look */
+  }
+}
+
+
+/* Optional: slightly smaller button typography on desktop */
+@media (min-width: 900px) {
+  .sp-home-actions .sp-btn {
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Portal top navigation
+------------------------------------------------------------------- */
+
+
+
+
+.sp-topbar__title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #111827;
+  margin: 0;
+  text-align: center;
+}
+
+.sp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+
+  font-weight: 900;
+  color: #111827;
+
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.sp-back:hover {
+  opacity: 0.96;
+}
+
+.sp-back__icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+@media (max-width: 600px) {
+  .sp-topbar {
+    padding: 0 6px;
+  }
+  .sp-topbar__title {
+    font-size: 16px;
+  }
+  .sp-back {
+    padding: 9px 10px;
+  }
+
+}
+
+/* ------------------------------------------------------------------
+   Portal top bar (global)
+------------------------------------------------------------------- */
+
+.sp-topbar__title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #111827;
+}
+
+
+
+.sp-topbar__back:hover,
+.sp-topbar__support:hover {
+  opacity: 0.96;
+}
+
+.sp-topbar__support-icon {
+  font-size: 16px;
+}
+
+
+
+/* ------------------------------------------------------------------
+   Portal top bar (global)
+------------------------------------------------------------------- */
+
+.sp-topbar {
+
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto 0;
+  padding: 12px 16px;
+
+  gap: 12px;
+}
+
+.sp-topbar__title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.sp-topbar__back,
+.sp-topbar__support {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 30px;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+
+  font-weight: 800;
+  color: #111827;
+  text-decoration: none;
+  background: #fff;
+}
+
+.sp-topbar__back:hover,
+.sp-topbar__support:hover {
+  opacity: 0.96;
+}
+
+.sp-topbar__support-icon {
+  font-size: 16px;
+}
+@media (max-width: 768px) {
+    .sp-topbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .sp-topbar__back, .sp-topbar__support {
+        padding: 8px 10px;
+    }
+}
+/* Mobile tweaks */
+@media (max-width: 640px) {
+  .sp-topbar__title {
+    font-size: 18px;
+  }
+
+
+}
+
+/* -------------------------------------------------
+   Subscription cards
+-------------------------------------------------- */
+
+.sp-subcard__title {
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.sp-subcard__meta {
+  margin-top: 6px;
+  font-weight: 650;
+  font-size: 16px;
+}
+
+.sp-subcard__lines {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.sp-subcard__empty {
+  font-weight: 650;
+  margin: 0;
+}
+
+.sp-subcard__more {
+  font-size: 13px;
+  font-weight: 650;
+  margin-top: 2px;
+}
+
+/* line item row */
+.sp-line {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.sp-line__img {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+  flex: 0 0 auto;
+}
+
+.sp-line__img--placeholder {
+  background: #f3f4f6;
+}
+
+.sp-line__meta {
+  flex: 1;
+  min-width: 160px;
+}
+
+.sp-line__title {
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.sp-line__subwrap {
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+.sp-line__sub {
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.sp-line__price {
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* --- Actions row: button + shipping protection side-by-side --- */
+.sp-subcard__actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:nowrap; /* allows wrap on smaller widths */
+  margin-top: 20px;
+}
+
+/* keep the CTA from stretching weirdly */
+.sp-subcard__actions .sp-btn{
+  flex:0 0 auto;
+}
+
+/* Shipping Protection: make it informational, not button-like */
+.sp-shipprot{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  flex:1 1 auto;           /* take remaining space */
+
+}
+
+/* image sizing */
+.sp-shipprot__img{
+    width: 40px;
+    height: auto;
+    object-fit: cover;
+    border: 0;
+}
+
+/* text block */
+.sp-shipprot__text{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  line-height:1.1;
+}
+
+.sp-shipprot__title{
+  font-weight:600;
+  font-size: 14px;
+}
+
+.sp-shipprot__sub{
+    font-size: 13px;
+    font-weight: 400;
+    margin-top: 3px;
+    color: #6b7280;
+    line-height: 1.2;
+}
+
+/* --- Mobile: stack nicely --- */
+@media (max-width: 520px){
+  .sp-subcard__actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .sp-shipprot{
+    justify-content:flex-start;
+    min-width:0;
+  }
+}

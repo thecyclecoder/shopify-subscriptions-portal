@@ -65,6 +65,13 @@
     return entry && (Date.now() - entry.ts) < HOME_CACHE_TTL_MS;
   }
 
+  function getFreshHomeData() {
+    var entry = getHomeCache();
+    if (!entry) return null;
+    if (!isCacheFresh(entry)) return null;
+    return entry.data || null;
+  }
+
   // ---- core ---------------------------------------------------------------
 
   async function requestJson(route, params, opts) {
@@ -141,7 +148,8 @@
 
   window.__SP.api = {
     requestJson: requestJson,
-    _getHomeCache: getHomeCache // exposed for debugging if needed
+    _getHomeCache: getHomeCache, // exposed for debugging if needed
+    getFreshHomeData: getFreshHomeData
   };
 
   log("[Portal API] Loaded. window.__SP.api is ready.");

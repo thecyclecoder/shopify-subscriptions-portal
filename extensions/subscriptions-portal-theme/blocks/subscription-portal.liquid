@@ -9,9 +9,13 @@
     data-email="{{ customer.email | escape }}"
   {% endif %}
 >
-  {% if block.settings.heading != blank %}
-    <h2>{{ block.settings.heading }}</h2>
-  {% endif %}
+{{ 'portal.css' | asset_url | stylesheet_tag }}
+{% if block.settings.heading != blank %}
+  <h2 class="sp-page-title">{{ block.settings.heading }}</h2>
+  <div class="sp-page-subhead">
+    <span class="sp-pill sp-pill--secure">🔒 Secure portal</span>
+  </div>
+{% endif %}
 
   {% unless customer %}
     {%- assign return_to = request.path -%}
@@ -55,13 +59,14 @@
           </p>
         </div>
       {% else %}
-        <p>Loading your subscriptions…</p>
+        <p style="text-align: center;">Loading…</p>
       {% endif %}
     </div>
 
     <script src="{{ 'subscription-portal.js' | asset_url }}" defer></script>
   {% endunless %}
 </div>
+
 
 {% schema %}
 {
