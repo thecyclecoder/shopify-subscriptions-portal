@@ -85,6 +85,58 @@
       });
     }
 
+    // ---- Navigation helpers (programmatic SPA nav) ----
+
+    function normalizePortalPage(p) {
+      p = String(p || "/pages/portal");
+      // strip trailing slash
+      return p.replace(/\/+$/, "");
+    }
+
+    function getPortalPageBase() {
+      return normalizePortalPage(window.__SP && window.__SP.portalPage ? window.__SP.portalPage : portalPage);
+    }
+
+    function navTo(url, opts) {
+      opts = opts || {};
+      url = String(url || "");
+      if (!url) return;
+
+      try {
+        if (opts.replace) window.history.replaceState({}, "", url);
+        else window.history.pushState({}, "", url);
+      } catch (e) {
+        // Fallback hard navigation
+        window.location.href = url;
+        return;
+      }
+
+      // Router listens to popstate; pushState doesn't fire it automatically.
+      try { window.dispatchEvent(new Event("popstate")); } catch (e) {}
+    }
+
+    function currentPortalScreen() {
+      var base = getPortalPageBase(); // "/pages/portal"
+      var path = String(window.location.pathname || "");
+      // only reason about screens inside the portal base
+      if (path.indexOf(base) !== 0) return "other";
+
+      var tail = path.slice(base.length); // "" | "/" | "/subscriptions" | "/subscription/..."
+      tail = String(tail || "").replace(/^\/+/, ""); // remove leading slashes
+
+      if (!tail) return "home";
+      if (tail.indexOf("subscriptions") === 0) return "subscriptions";
+      if (tail.indexOf("subscription") === 0) return "subscription-detail";
+      return "other";
+    }
+
+    function subscriptionsUrlFromHere() {
+      var base = getPortalPageBase();
+      // preserve status if present, default active
+      var params = new URLSearchParams(window.location.search || "");
+      var status = (params.get("status") || "active").toLowerCase();
+      return base + "/subscriptions?status=" + encodeURIComponent(status);
+    }
 
     // ---- Top bar helpers (global) ----
 
@@ -108,24 +160,7 @@
       return false;
     }
 
-
-
     function renderTopBar(ui) {
-      function getPortalScreen() {
-        var path = String(window.location.pathname || "");
-        var m = path.match(/\/portal(\/.*)?$/);
-        var tail = (m && m[1]) ? m[1].replace(/^\/+/, "") : "";
-
-        if (!tail) return "home";
-        if (tail.indexOf("subscriptions") === 0) return "subscriptions";
-        if (tail.indexOf("subscription") === 0) return "subscription-detail";
-        return "other";
-      }
-
-      function getBasePrefix() {
-        return String(window.location.pathname || "").startsWith("/pages/") ? "/pages" : "";
-      }
-
       // Build DOM nodes once
       var backLink = ui.el("a", { href: "#", class: "sp-topbar__back" }, []);
       var supportLink = ui.el(
@@ -143,42 +178,49 @@
         ]
       );
 
-      function handleBack(e) {
-        var screen = getPortalScreen();
+      function updateBackLink() {
+        var screen = currentPortalScreen();
         var isHome = screen === "home";
 
-        if (isHome) {
-          // allow normal navigation to /account
-          return;
-        }
+        // Always keep arrow, per your request
+        // Home => "Account" (go to /account)
+        // Other => "Back" (handled by click handler)
+        backLink.textContent = "← " + (isHome ? "Account" : "Back");
+        backLink.setAttribute("href", isHome ? "/account" : "#");
+      }
 
-        e.preventDefault();
+      function handleBack(e) {
+        var screen = currentPortalScreen();
 
-        if (window.history && window.history.length > 1) {
-          window.history.back();
+        // Home screen: let the normal href="/account" navigation happen
+        if (screen === "home") return;
+
+        // All other screens: custom behavior (no history walking through filters)
+        if (e && e.preventDefault) e.preventDefault();
+
+        var base = getPortalPageBase();
+
+        // ✅ Key fix: on subscriptions list, ALWAYS go to portal home (ignore history)
+        if (screen === "subscriptions") {
+          navTo(base, { replace: false });
           return false;
         }
 
-        // fallback: portal home
-        window.location.href = getBasePrefix() + "/portal";
+        // Detail: go back to subscriptions (preserve status query if present)
+        if (screen === "subscription-detail") {
+          navTo(subscriptionsUrlFromHere(), { replace: false });
+          return false;
+        }
+
+        // Fallback: portal home
+        navTo(base, { replace: false });
         return false;
       }
 
       backLink.addEventListener("click", handleBack);
 
-      function updateBackLink() {
-        var screen = getPortalScreen();
-        var isHome = screen === "home";
-
-        // Set text and destination
-        backLink.textContent = "← " + (isHome ? "Account" : "Back");
-        backLink.setAttribute("href", isHome ? "/account" : "#");
-      }
-
-      // Initial
+      // Initial + update on SPA navigation
       updateBackLink();
-
-      // Update on SPA navigation
       window.addEventListener("sp:locationchange", updateBackLink);
 
       return ui.el("div", { class: "sp-topbar" }, [backLink, supportLink]);
