@@ -42,6 +42,91 @@
 
     wireLocationChangeEvent();
 
+    // ---- Config parsing (NEW) ----
+    function getAttrAny(el, names) {
+      for (var i = 0; i < names.length; i++) {
+        var v = el.getAttribute(names[i]);
+        if (v !== null && v !== undefined && String(v).trim() !== "") return v;
+      }
+      return "";
+    }
+
+    function toInt(val, fallback) {
+      var n = parseInt(String(val || "").trim(), 10);
+      return isFinite(n) ? n : fallback;
+    }
+
+    function cleanStr(val) {
+      return String(val == null ? "" : val).trim();
+    }
+
+    function parseList(val) {
+      // Accept JSON array string or comma-separated list
+      var s = cleanStr(val);
+      if (!s) return [];
+
+      // Try JSON
+      if ((s[0] === "[" && s[s.length - 1] === "]") || (s[0] === "{" && s[s.length - 1] === "}")) {
+        try {
+          var parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            return parsed.map(function (x) { return cleanStr(x); }).filter(Boolean);
+          }
+        } catch (_) {}
+      }
+
+      // CSV fallback
+      return s
+        .split(",")
+        .map(function (x) { return cleanStr(x); })
+        .filter(Boolean);
+    }
+
+    function parsePortalConfig(el) {
+      // These names are flexible: supports a few likely attribute variants.
+      // You can standardize later; this keeps you moving now.
+      var raw = {
+        lock_window_days: getAttrAny(el, ["data-lock-window-days", "data-lock_window_days", "data-config-lock-window-days"]),
+        selling_plan_week_4: getAttrAny(el, ["data-selling-plan-week-4", "data-selling_plan_week_4", "data-selling-plan-week4"]),
+        selling_plan_week_8: getAttrAny(el, ["data-selling-plan-week-8", "data-selling_plan_week_8", "data-selling-plan-week8"]),
+        selling_plan_week_2: getAttrAny(el, ["data-selling-plan-week-2", "data-selling_plan_week_2", "data-selling-plan-week2"]),
+
+        shipping_protection_product: getAttrAny(el, [
+          "data-shipping-protection-product",
+          "data-shipping_protection_product",
+          "data-shipping-protection-product-id"
+        ]),
+
+        products_available_to_add: getAttrAny(el, [
+          "data-products-available-to-add",
+          "data-products_available_to_add",
+          "data-products-add"
+        ]),
+
+        addons: getAttrAny(el, ["data-addons", "data-addon-products", "data-addons-products"])
+      };
+
+      // Normalize into a stable shape
+      var cfg = {
+        lockWindowDays: toInt(raw.lock_window_days, 7),
+
+        sellingPlans: {
+          week4: cleanStr(raw.selling_plan_week_4),
+          week8: cleanStr(raw.selling_plan_week_8),
+          week2: cleanStr(raw.selling_plan_week_2)
+        },
+
+        // store product identifiers as strings (handle or id; your screens can decide)
+        shippingProtectionProduct: cleanStr(raw.shipping_protection_product),
+
+        // arrays of identifiers (handle or id)
+        productsAvailableToAdd: parseList(raw.products_available_to_add),
+        addons: parseList(raw.addons)
+      };
+
+      return { raw: raw, config: cfg };
+    }
+
     // Global config for other modules
     window.__SP = window.__SP || {};
     window.__SP.endpoint = endpoint;
@@ -50,6 +135,14 @@
     window.__SP.isDesignMode = isDesignMode;
     window.__SP.root = root;
     window.__SP.el = el;
+
+    // Parse config ONCE, store on window.__SP
+    var parsed = parsePortalConfig(el);
+    window.__SP.configRaw = parsed.raw;
+    window.__SP.config = parsed.config;
+
+    log("[Portal Config] raw:", window.__SP.configRaw);
+    log("[Portal Config] normalized:", window.__SP.config);
 
     if (isDesignMode) {
       root.innerHTML =
@@ -182,9 +275,6 @@
         var screen = currentPortalScreen();
         var isHome = screen === "home";
 
-        // Always keep arrow, per your request
-        // Home => "Account" (go to /account)
-        // Other => "Back" (handled by click handler)
         backLink.textContent = "← " + (isHome ? "Account" : "Back");
         backLink.setAttribute("href", isHome ? "/account" : "#");
       }
@@ -200,7 +290,7 @@
 
         var base = getPortalPageBase();
 
-        // ✅ Key fix: on subscriptions list, ALWAYS go to portal home (ignore history)
+        // On subscriptions list, ALWAYS go to portal home
         if (screen === "subscriptions") {
           navTo(base, { replace: false });
           return false;
@@ -257,12 +347,10 @@
       if (ui && typeof ui.setRoot === "function" && !ui.__sp_wrapped_setRoot) {
         var originalSetRoot = ui.setRoot;
         ui.setRoot = function (htmlOrEl) {
-          // If shell exists, route renders into screen root
           if (window.__SP && typeof window.__SP.setScreenRoot === "function") {
             window.__SP.setScreenRoot(htmlOrEl);
             return;
           }
-          // Fallback to original behavior
           return originalSetRoot(htmlOrEl);
         };
         ui.__sp_wrapped_setRoot = true;
@@ -276,6 +364,7 @@
 
     // Load in order
     Promise.resolve()
+      .then(function () { return loadScript(base + "portal-utils.js"); })
       .then(function () { return loadScript(base + "portal-ui.js"); })
       .then(function () { return loadScript(base + "portal-api.js"); })
       .then(function () { return loadScript(base + "portal-home.js"); })
@@ -289,7 +378,6 @@
         if (window.__SP && window.__SP.router && typeof window.__SP.router.start === "function") {
           window.__SP.router.start();
         } else {
-          // Render into screen root if possible
           if (window.__SP && typeof window.__SP.setScreenRoot === "function") {
             window.__SP.setScreenRoot("<p>Portal router failed to load.</p>");
           } else {

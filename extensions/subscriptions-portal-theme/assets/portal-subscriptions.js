@@ -10,6 +10,13 @@
     return (params.get("status") || "active").toLowerCase();
   }
 
+  function shortId(gid) {
+    var s = String(gid || "");
+    if (!s) return "";
+    var parts = s.split("/");
+    return parts[parts.length - 1] || s;
+  }
+
   function fmtDate(iso) {
     if (!iso) return "";
     var t = Date.parse(iso);
@@ -175,7 +182,10 @@ function money(m) {
       }
     }
 
-    var detailHref = basePrefix + "/portal/subscription?id=" + encodeURIComponent(String(c.id || ""));
+    var detailHref =
+      basePrefix +
+      "/portal/subscription?id=" +
+      encodeURIComponent(shortId(c.id) || "");
     var actions = ui.el("div", { class: "sp-subcard__actions" }, [
       ui.el("a", { class: "sp-btn", href: detailHref }, ["View details"]),
     ]);

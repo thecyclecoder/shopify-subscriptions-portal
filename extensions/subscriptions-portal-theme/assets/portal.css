@@ -908,3 +908,316 @@ padding: 10px 12px;
     min-width:0;
   }
 }
+
+/* =========================================================
+   Subscription Detail (read-only scaffolding)
+   Used by portal-subscription-detail.js
+========================================================= */
+
+.sp-detail{
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.sp-detail__header{
+  box-shadow: var(--sp-shadow2);
+}
+
+.sp-detail__header-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+}
+
+.sp-detail__titlewrap{
+  min-width: 0;
+}
+
+.sp-detail__title{
+  margin: 0;
+}
+
+.sp-detail__subtitle{
+  margin-top: 6px;
+  font-weight: 650;
+  font-size: 15px;
+}
+
+/* Grid: 2 columns on desktop, stacked on mobile */
+.sp-detail__grid{
+  margin-top: 16px;
+}
+
+.sp-detail__col{
+  display:flex;
+  flex-direction:column;
+  gap: 16px;
+}
+
+/* Section headers inside cards */
+.sp-detail__sectionhead{
+  margin-bottom: 10px;
+}
+
+.sp-detail__section-sub{
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* Alerts / notices */
+.sp-alert{
+  border: 1px solid rgba(245, 158, 11, .35);
+  background: rgba(245, 158, 11, .08);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+
+.sp-alert__title{
+  font-weight: 950;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.sp-alert__body{
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* Actions row inside detail cards */
+.sp-detail__actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* Lines list on detail page */
+.sp-detail__lines{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.sp-line--detail{
+  border-radius: 16px;
+}
+
+/* Inputs */
+.sp-input{
+  width: 100%;
+  border: 1px solid var(--sp-border);
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 12px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--sp-text);
+}
+
+.sp-input::placeholder{
+  color: #9ca3af;
+  font-weight: 650;
+}
+
+.sp-detail__coupon{
+  display:flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.sp-detail__coupon .sp-btn{
+  flex: 0 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* Toggle button (read-only placeholder for now) */
+.sp-toggle{
+  border: 1px solid var(--sp-border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 900;
+  font-size: 14px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.sp-toggle--disabled{
+  cursor: not-allowed;
+  opacity: .7;
+}
+
+/* Disabled buttons (placeholders) */
+.sp-btn--disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.sp-btn--disabled:hover{
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* More subtle ghost buttons in detail areas */
+.sp-detail__items-actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* Hint text */
+.sp-detail__hint{
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* Shipping protection row in detail page */
+.sp-detail__shiprow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.sp-detail__shipmeta{
+  min-width: 0;
+}
+
+.sp-detail__shipstate{
+  font-weight: 950;
+  font-size: 16px;
+}
+
+.sp-detail__shipsub{
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* Add-ons placeholder */
+.sp-detail__addons{
+  margin-top: 10px;
+}
+
+.sp-addon{
+  border: 1px dashed rgba(17, 24, 39, .18);
+  background: rgba(17, 24, 39, .02);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.sp-addon__title{
+  font-weight: 950;
+}
+
+.sp-addon__sub{
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* Rewards + reviews placeholders */
+.sp-detail__rewards,
+.sp-detail__reviews{
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* Cancel card (minimized, subtle) */
+.sp-detail__cancel{
+  border: 1px solid rgba(239, 68, 68, .22);
+  background: rgba(239, 68, 68, .04);
+}
+
+.sp-detail__cancel-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+}
+
+.sp-detail__cancel-title{
+  font-weight: 950;
+}
+
+.sp-detail__cancel-sub{
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.sp-btn--danger{
+  border-color: rgba(239, 68, 68, .45);
+  color: #991b1b;
+  background: #fff;
+}
+
+/* Mobile tweaks */
+@media (max-width: 720px){
+  .sp-detail__header-top{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sp-detail__coupon{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sp-detail__shiprow{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sp-detail__cancel-row{
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Full-width action buttons on mobile */
+@media (max-width: 768px) {
+  .sp-detail__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sp-detail__actions .sp-btn,
+  .sp-detail__actions a.sp-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* Items action buttons layout */
+.sp-detail__items-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* Make buttons full width */
+.sp-detail__items-actions .sp-btn {
+  width: 100%;
+}
+
+/* Desktop: 2 columns */
+@media (min-width: 768px) {
+  .sp-detail__items-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

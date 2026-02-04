@@ -4,18 +4,34 @@
   data-endpoint="{{ block.settings.endpoint }}"
   data-debug="{{ block.settings.debug }}"
   data-portal-page="{{ block.settings.portal_page_path }}"
+  data-lock-window-days="{{ block.settings.lock_window_days }}"
+  data-selling-plan-week-4="{{ block.settings.selling_plan_week_4 }}"
+  data-selling-plan-week-8="{{ block.settings.selling_plan_week_8 }}"
+  data-selling-plan-week-2="{{ block.settings.selling_plan_week_2 }}"
+  data-shipping-protection-product="{{ block.settings.shipping_protection_product.id }}"
+  data-products-available-to-add='[
+    {%- for p in block.settings.products_available_to_add -%}
+      {{- p.id | json -}}{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]'
+  data-addons='[
+    {%- for p in block.settings.addons -%}
+      {{- p.id | json -}}{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]'
   {% if customer %}
     data-first-name="{{ customer.first_name | escape }}"
     data-email="{{ customer.email | escape }}"
   {% endif %}
 >
-{{ 'portal.css' | asset_url | stylesheet_tag }}
-{% if block.settings.heading != blank %}
-  <h2 class="sp-page-title">{{ block.settings.heading }}</h2>
-  <div class="sp-page-subhead">
-    <span class="sp-pill sp-pill--secure">🔒 Secure portal</span>
-  </div>
-{% endif %}
+  {{ 'portal.css' | asset_url | stylesheet_tag }}
+
+  {% if block.settings.heading != blank %}
+    <h2 class="sp-page-title">{{ block.settings.heading }}</h2>
+    <div class="sp-page-subhead">
+      <span class="sp-pill sp-pill--secure">🔒 Secure portal</span>
+    </div>
+  {% endif %}
 
   {% unless customer %}
     {%- assign return_to = request.path -%}
@@ -66,14 +82,17 @@
     <script src="{{ 'subscription-portal.js' | asset_url }}" defer></script>
   {% endunless %}
 </div>
-
-
 {% schema %}
 {
   "name": "Subscriptions Portal",
   "target": "section",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Manage your subscriptions" },
+    { 
+      "type": "text", 
+      "id": "heading", 
+      "label": "Heading", 
+      "default": "Manage your subscriptions" 
+    },
     {
       "type": "text",
       "id": "portal_page_path",
@@ -88,8 +107,79 @@
       "default": "/apps/portal",
       "info": "Base path for the portal routes (example: /apps/portal)."
     },
-    { "type": "checkbox", "id": "redirect_to_login", "label": "Auto-redirect to login when logged out", "default": true },
-    { "type": "checkbox", "id": "debug", "label": "Debug mode", "default": false }
+    { 
+      "type": "checkbox", 
+      "id": "redirect_to_login", 
+      "label": "Auto-redirect to login when logged out", 
+      "default": true 
+    },
+    { 
+      "type": "checkbox", 
+      "id": "debug", 
+      "label": "Debug mode", 
+      "default": false 
+    },
+
+    {
+      "type": "header",
+      "content": "Portal Rules"
+    },
+    {
+      "type": "number",
+      "id": "lock_window_days",
+      "label": "Read-only window (days)",
+      "default": 7,
+      "info": "If a subscription is younger than this many days, it is read-only and shows the setup notice."
+    },
+
+    {
+      "type": "header",
+      "content": "Selling plan IDs (frequency)"
+    },
+    {
+      "type": "text",
+      "id": "selling_plan_week_4",
+      "label": "Selling Plan ID – 4 weeks (Monthly)",
+      "default": "REQUIRED",
+      "info": "Appstle selling plan ID for monthly subscriptions"
+    },
+    {
+      "type": "text",
+      "id": "selling_plan_week_8",
+      "label": "Selling Plan ID – 8 weeks (Every 2 months)",
+      "default": "REQUIRED",
+      "info": "Appstle selling plan ID for every-2-month subscriptions"
+    },
+    {
+      "type": "text",
+      "id": "selling_plan_week_2",
+      "label": "Selling Plan ID – 2 weeks (Twice a month)",
+      "default": "REQUIRED",
+      "info": "Appstle selling plan ID for twice-a-month subscriptions"
+    },
+
+    {
+      "type": "header",
+      "content": "Products"
+    },
+    {
+      "type": "product",
+      "id": "shipping_protection_product",
+      "label": "Shipping Protection product",
+      "info": "Used for the Shipping Protection toggle."
+    },
+    {
+      "type": "product_list",
+      "id": "products_available_to_add",
+      "label": "Products Available to Add",
+      "limit": 50
+    },
+    {
+      "type": "product_list",
+      "id": "addons",
+      "label": "One-time Add-ons (Mug, Mixer, Tumbler, etc.)",
+      "limit": 50
+    }
   ]
 }
 {% endschema %}

@@ -46,14 +46,17 @@
   }
 
   function route() {
-    var path = window.location.pathname;
+    var path = String(window.location.pathname || "");
 
-    // Support Shopify page route too
+    // Normalize: strip trailing slash so "/pages/portal/" becomes "/pages/portal"
+    path = path.replace(/\/+$/, "");
 
+    if (path === "/pages/portal") return safeRender("home");
+    if (path.indexOf("/pages/portal/subscriptions") === 0) return safeRender("subscriptions");
 
-    if (path === "/pages/portal" || path === "/pages/portal/") return safeRender("home");
-    if (path.startsWith("/pages/portal/subscriptions")) return safeRender("subscriptions");
-    if (path.startsWith("/pages/portal/subscription/")) return safeRender("subscriptionDetail");
+    // ✅ Detail page is always "/pages/portal/subscription?id=123"
+    // (querystring is not part of pathname, so we only match the base path)
+    if (path === "/pages/portal/subscription") return safeRender("subscriptionDetail");
 
     if (window.__SP.ui) {
       window.__SP.ui.setRoot(
