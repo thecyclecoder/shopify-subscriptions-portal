@@ -39,10 +39,8 @@
   function getConfig() {
     var cfg = (window.__SP && window.__SP.config) || {};
     return {
-      // editable field in extension block later (you said you have values already)
       lockDays: Number(cfg.lockDays || cfg.subscriptionLockDays || cfg.detailLockDays || 7),
       portalLock: Boolean(cfg.portalLock || cfg.portal_lock || false),
-      // in case you want to show the support badge image later
       shippingProtectionProductId: cfg.shippingProtectionProductId || cfg.shipping_protection_product_id || ""
     };
   }
@@ -64,6 +62,82 @@
     return null;
   }
 
+  // ---- UI feedback + single-flight action helpers -------------------------
+
+  var __sp_busy = false;
+
+  function showToast(ui, text, kind) {
+    // kind: "success" | "error" | "info"
+    var cls = "sp-toast";
+    if (kind === "success") cls += " sp-toast--success";
+    if (kind === "error") cls += " sp-toast--error";
+
+    var toast = ui.el("div", { class: cls }, [
+      ui.el("div", { class: "sp-toast__body" }, [text || ""])
+    ]);
+
+    // Ensure a container at top of page
+    var host = document.querySelector(".sp-detail");
+    if (!host) host = window.__SP.root || document.body;
+
+    // Remove existing toast if any
+    var existing = host.querySelector(".sp-toast");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    host.insertBefore(toast, host.firstChild);
+
+    var ttl = 15000; // 15s
+    window.setTimeout(function () {
+      try {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      } catch (e) {}
+    }, ttl);
+  }
+
+  function showBlockingModal(ui, text) {
+    var overlay = ui.el("div", { class: "sp-modal sp-modal--blocking" }, [
+      ui.el("div", { class: "sp-modal__card" }, [
+        ui.el("div", { class: "sp-modal__title" }, ["Processing changes…"]),
+        ui.el("div", { class: "sp-modal__body sp-muted" }, [text || "Please wait."])
+      ])
+    ]);
+
+    document.body.appendChild(overlay);
+    return function close() {
+      try {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      } catch (e) {}
+    };
+  }
+
+  async function withBusy(ui, actionFn) {
+    if (__sp_busy) return { ok: false, error: "busy" };
+    __sp_busy = true;
+
+    var close = showBlockingModal(ui, "Please do not refresh while we update your subscription.");
+    try {
+      return await actionFn();
+    } finally {
+      __sp_busy = false;
+      close();
+    }
+  }
+
+  async function refreshContractByShortId(shortContractId) {
+    var home = await window.__SP.api.requestJson("home");
+    var list = (window.__SP.utils && window.__SP.utils.pickContracts)
+      ? window.__SP.utils.pickContracts(home)
+      : (home && (home.contracts || home.contracts_preview) ? (home.contracts || home.contracts_preview) : []);
+
+    var arr = Array.isArray(list) ? list : [];
+    for (var i = 0; i < arr.length; i++) {
+      var c = arr[i];
+      if (!c) continue;
+      if (shortId(c.id) === String(shortContractId)) return c;
+    }
+    return null;
+  }
+
   function normalizeStatus(s) {
     return (window.__SP.utils && window.__SP.utils.normalizeStatus)
       ? window.__SP.utils.normalizeStatus(s)
@@ -75,6 +149,7 @@
       ? window.__SP.utils.fmtDate(iso)
       : (iso || "");
   }
+
   function fmtPrettyDate(iso) {
     if (!iso) return "";
     var t = Date.parse(iso);
@@ -95,18 +170,6 @@
 
     // "Feb 9, 2026" -> "Feb. 9, 2026"
     return s.replace(/^([A-Za-z]{3})\s/, "$1. ");
-  }
-  function nextOrderText(iso) {
-    if (!iso) return "";
-    var d = fmtDate(iso); // uses portal-utils fmtDate() -> "Feb 9, 2026"
-    if (!d) return "";
-
-    // Add a period after a 3-letter month if it's not already there (Feb -> Feb.)
-    d = d.replace(/^([A-Za-z]{3})(\s)/, function (_, m, sp) {
-      return m + (m.endsWith(".") ? "" : ".") + sp;
-    });
-
-    return "Your next order is on " + d;
   }
 
   function billingLabel(policy) {
@@ -145,18 +208,14 @@
     var cls = "sp-pill sp-pill--neutral";
     if (kind === "active") cls = "sp-pill sp-pill--active";
     if (kind === "cancelled") cls = "sp-pill sp-pill--cancelled";
+    if (kind === "paused") cls = "sp-pill sp-pill--paused";
     return ui.el("span", { class: cls }, [text]);
   }
 
   function disabledBtn(ui, text) {
-    // Placeholder button (not wired)
     return ui.el(
       "button",
-      {
-        type: "button",
-        class: "sp-btn sp-btn--disabled",
-        disabled: true
-      },
+      { type: "button", class: "sp-btn sp-btn--disabled", disabled: true },
       [text]
     );
   }
@@ -164,11 +223,7 @@
   function disabledGhostBtn(ui, text) {
     return ui.el(
       "button",
-      {
-        type: "button",
-        class: "sp-btn sp-btn--ghost sp-btn--disabled",
-        disabled: true
-      },
+      { type: "button", class: "sp-btn sp-btn--ghost sp-btn--disabled", disabled: true },
       [text]
     );
   }
@@ -219,7 +274,20 @@
 
     ui.setRoot(ui.loading("Loading subscription…"));
 
-    var id = getContractId(); // should be short id now
+    var utils = (window.__SP && window.__SP.utils) || null;
+    if (!utils || typeof utils.pickContracts !== "function" || typeof utils.isSoftPaused !== "function") {
+      ui.setRoot(
+        ui.el("div", { class: "sp-wrap sp-grid" }, [
+          ui.el("div", { class: "sp-card" }, [
+            ui.el("h2", { class: "sp-title" }, ["Portal utils not loaded"]),
+            ui.el("p", { class: "sp-muted" }, ["Please refresh. If this keeps happening, contact support."])
+          ])
+        ])
+      );
+      return;
+    }
+
+    var id = getContractId(); // short id
     var cfg = getConfig();
 
     var homeData;
@@ -237,10 +305,8 @@
       return;
     }
 
-    var contractsAll = (window.__SP.utils && window.__SP.utils.pickContracts)
-      ? window.__SP.utils.pickContracts(homeData)
-      : (homeData && (homeData.contracts || homeData.contracts_preview) ? (homeData.contracts || homeData.contracts_preview) : []);
-
+    // IMPORTANT: meta-aware pickContracts (attaches __attrs + __softPaused etc)
+    var contractsAll = utils.pickContracts(homeData);
     var contract = findContract(Array.isArray(contractsAll) ? contractsAll : [], id);
 
     if (!contract) {
@@ -256,48 +322,55 @@
     }
 
     var status = normalizeStatus(contract.status);
-    var statusKind = status === "ACTIVE" ? "active" : status === "CANCELLED" ? "cancelled" : "neutral";
+    var softPaused = (status === "ACTIVE") && utils.isSoftPaused(contract);
+    var pausedUntilLabel = (softPaused && typeof utils.getPausedUntilLabel === "function")
+      ? utils.getPausedUntilLabel(contract)
+      : "";
 
-    // Age gating: based on createdAt (fallback: originOrder? not guaranteed)
+    var effectiveStatusText = (status === "ACTIVE" ? "Active" : status === "CANCELLED" ? "Cancelled" : status);
+    var effectiveStatusKind = (status === "ACTIVE" ? "active" : status === "CANCELLED" ? "cancelled" : "neutral");
+
+    if (softPaused) {
+      effectiveStatusText = "Paused";
+      effectiveStatusKind = "paused";
+    }
+
+    // Age gating: based on createdAt
     var createdMs = toNumDate(contract.createdAt);
     var now = Date.now();
     var ageDays = createdMs ? daysBetween(createdMs, now) : 9999;
     var isYoung = ageDays < cfg.lockDays;
 
-    // Hard portal lock (influencer etc)
+    // Hard portal lock
     var isPortalLocked = !!cfg.portalLock;
 
-    // Read-only logic for this iteration:
-    // - If young => fully read-only, show notice
-    // - If portal lock => mostly read-only (we’ll allow shipping address later; placeholders for now)
+    // Read-only logic
     var isReadOnly = isYoung || isPortalLocked;
 
-
-    // Split shipping protection out of lines (robust: title/sku OR productId match)
+    // Split shipping protection out of lines
     var linesAll = Array.isArray(contract.lines) ? contract.lines : [];
     var shipLine = null;
     var lines = [];
 
-    var shipProdId = String((cfg && cfg.shippingProtectionProductId) || "").trim(); // stored as a short product id in config
+    var shipProdId = String((cfg && cfg.shippingProtectionProductId) || "").trim();
 
     function lineMatchesShipProtection(ln) {
       if (!ln) return false;
 
-      // 1) Existing heuristic (title/sku)
+      // 1) Existing heuristic
       try {
         if (isShipProt(ln)) return true;
       } catch (e) {}
 
-      // 2) Product ID match (preferred)
+      // 2) Product ID match
       if (shipProdId) {
-        // ln.productId might be a gid or a short id, depending on your API shape
         var lp = "";
         try {
           if (ln.productId != null) lp = String(ln.productId);
           else if (ln.product && ln.product.id != null) lp = String(ln.product.id);
         } catch (e) {}
 
-        var lpShort = shortId(lp); // handles gid://.../123 -> 123, or returns same if already short
+        var lpShort = shortId(lp);
         if (lpShort && lpShort === shipProdId) return true;
       }
 
@@ -307,39 +380,36 @@
     linesAll.forEach(function (ln) {
       if (!ln) return;
       if (lineMatchesShipProtection(ln)) {
-        if (!shipLine) shipLine = ln; // keep the first one
-        return; // do NOT include in Items list
+        if (!shipLine) shipLine = ln;
+        return;
       }
       lines.push(ln);
     });
 
-    // Header card
-    var nextDateText = "";
-    if (contract.nextBillingDate) {
+    // Header subtitle: paused uses "Paused until", otherwise "Your next order is on"
+    var subtitleText = "";
+    if (softPaused) {
+      subtitleText = pausedUntilLabel
+        ? ("Paused until " + pausedUntilLabel)
+        : "This subscription is currently paused.";
+    } else if (contract.nextBillingDate) {
       var pretty = fmtPrettyDate(contract.nextBillingDate);
-      nextDateText = pretty ? ("Your next order is on " + pretty) : "";
+      subtitleText = pretty ? ("Your next order is on " + pretty) : "";
+    } else {
+      subtitleText = "Your next order date is not available";
     }
+
     var header = ui.el("div", { class: "sp-card sp-detail__header" }, [
       ui.el("div", { class: "sp-detail__header-top" }, [
         ui.el("div", { class: "sp-detail__titlewrap" }, [
           ui.el("h2", { class: "sp-title sp-detail__title" }, ["Subscription details"]),
-          ui.el("p", { class: "sp-muted sp-detail__subtitle" }, [
-            nextDateText || "Your next order date is not available"
-          ])
+          ui.el("p", { class: "sp-muted sp-detail__subtitle" }, [subtitleText])
         ]),
-        pill(
-          ui,
-          statusKind === "active"
-            ? "Active"
-            : statusKind === "cancelled"
-            ? "Cancelled"
-            : status,
-          statusKind
-        )
+        pill(ui, effectiveStatusText, effectiveStatusKind)
       ])
     ]);
 
-    // Notice
+    // Notices
     var notices = [];
     if (isYoung) {
       notices.push(
@@ -357,16 +427,76 @@
       );
     }
 
-    // Pause section (placeholders)
+    // Pause section (wired)
+    function pauseClick(days) {
+      if (isReadOnly) return;
+      // If already paused, avoid stacking pauses in UI
+      if (softPaused) return;
+
+      withBusy(ui, async function () {
+        try {
+          var contractShortId = Number(shortId(contract.id));
+
+          var resp = await window.__SP.api.postJson("pause", {
+            contractId: contractShortId,
+            pauseDays: Number(days)
+          });
+
+          if (!resp || resp.ok === false) {
+            throw new Error((resp && resp.error) ? resp.error : "pause_failed");
+          }
+
+          // Refresh contract from home and update local state
+          var fresh = await refreshContractByShortId(String(contractShortId));
+          if (fresh) {
+            contract = fresh;
+          }
+
+          showToast(ui, "Done. Your next order was pushed out " + String(days) + " days.", "success");
+
+          // Re-render the screen
+          await render();
+          return { ok: true };
+        } catch (e) {
+          showToast(ui, "Sorry — we couldn’t update your subscription. Please try again.", "error");
+          return { ok: false, error: String(e && e.message ? e.message : e) };
+        }
+      });
+    }
+
+    var pauseLocked = isReadOnly || softPaused || (status === "CANCELLED");
+
+    var btn30Props = {
+      type: "button",
+      class: "sp-btn" + (pauseLocked ? " sp-btn--disabled" : ""),
+      onclick: function () { pauseClick(30); }
+    };
+    if (pauseLocked) btn30Props.disabled = true;
+
+    var btn60Props = {
+      type: "button",
+      class: "sp-btn" + (pauseLocked ? " sp-btn--disabled" : ""),
+      onclick: function () { pauseClick(60); }
+    };
+    if (pauseLocked) btn60Props.disabled = true;
+
+    var pauseHint = "";
+    if (status === "CANCELLED") pauseHint = "This subscription is cancelled.";
+    else if (softPaused) pauseHint = pausedUntilLabel ? ("Paused until " + pausedUntilLabel + ".") : "This subscription is currently paused.";
+    else if (isReadOnly) pauseHint = "Actions will unlock when available.";
+    else pauseHint = "Subscription will resume after the selected period ends.";
+
+    var pauseSub = softPaused && pausedUntilLabel
+      ? ("This subscription is paused until " + pausedUntilLabel + ".")
+      : "Pause pushes your next order out from today.";
+
     var pauseCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
-      sectionTitle(ui, "Pause", "Pause pushes your next order out from today."),
+      sectionTitle(ui, "Pause", pauseSub),
       ui.el("div", { class: "sp-detail__actions" }, [
-        disabledBtn(ui, "Pause 30 days"),
-        disabledBtn(ui, "Pause 60 days")
+        ui.el("button", btn30Props, ["Pause 30 days"]),
+        ui.el("button", btn60Props, ["Pause 60 days"])
       ]),
-      ui.el("p", { class: "sp-muted sp-detail__hint" }, [
-        isReadOnly ? "Actions will unlock when available." : "Coming next: these buttons will update your next billing date."
-      ])
+      ui.el("p", { class: "sp-muted sp-detail__hint" }, [pauseHint])
     ]);
 
     // Frequency card
@@ -404,7 +534,7 @@
       ])
     ]);
 
-    // Shipping Address card (no address display; Appstle payload doesn't include it yet)
+    // Shipping Address card (placeholder)
     var shippingAddressCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Shipping", "Update where your next order ships."),
       ui.el("div", { class: "sp-detail__actions" }, [
@@ -498,10 +628,8 @@
 
     var main = ui.el("div", { class: "sp-wrap sp-detail" }, [header]);
 
-    // Notices (if any)
     notices.forEach(function (n) { main.appendChild(n); });
 
-    // Content grid (re-ordered)
     var grid = ui.el("div", { class: "sp-grid sp-detail__grid" }, [
       ui.el("div", { class: "sp-detail__col" }, [
         pauseCard,
@@ -520,7 +648,6 @@
     ]);
 
     main.appendChild(grid);
-
     ui.setRoot(main);
   }
 

@@ -31,9 +31,15 @@
     if (root) root.innerHTML = html;
   }
 
+  function getBasePrefix() {
+    return String(window.location.pathname || "").startsWith("/pages/") ? "/pages" : "";
+  }
+
   function btn(href, text, variant) {
     var cls = "sp-btn";
     if (variant === "primary") cls += " sp-btn--primary";
+    if (variant === "secondary") cls += " sp-btn--secondary";
+    if (variant === "ghost") cls += " sp-btn--ghost";
     return (
       "<a href='" + href + "' class='" + cls + "'>" +
       esc(text) +
@@ -48,6 +54,22 @@
     return await window.__SP.api.requestJson("home");
   }
 
+  function countSubscriptions(homeData) {
+    // Prefer meta-aware contracts via portal-utils if available
+    try {
+      var utils = window.__SP.utils;
+      if (utils && typeof utils.pickContracts === "function") {
+        var list = utils.pickContracts(homeData);
+        return Array.isArray(list) ? list.length : 0;
+      }
+    } catch (e) {}
+
+    // Fallback: summary.active_count if present
+    var summary = (homeData && homeData.summary) || {};
+    var activeCount = Number(summary.active_count || 0);
+    return isFinite(activeCount) ? activeCount : 0;
+  }
+
   function renderHome(data) {
     if (!data || data.ok !== true) {
       setRoot(
@@ -59,12 +81,15 @@
       return;
     }
 
+    var basePrefix = getBasePrefix();
+
     var customer = data.customer || {};
-    var name = window.__SP.el.getAttribute("data-first-name");
+    var name = window.__SP.el && window.__SP.el.getAttribute
+      ? window.__SP.el.getAttribute("data-first-name")
+      : "";
     var greeting = name ? "Welcome back, " + esc(name) : "Welcome back";
 
-    var summary = data.summary || {};
-    var activeCount = summary.active_count || 0;
+    var subCount = countSubscriptions(data);
 
     var header =
       "<div class='sp-home-header'>" +
@@ -78,13 +103,28 @@
       ? "<div class='sp-home-email'>Signed in as " + esc(customer.email) + "</div>"
       : "";
 
+    // Single CTA
     var actions =
       "<div class='sp-home-actions'>" +
-        btn("/pages/portal/subscriptions?status=active", "View active subscriptions (" + activeCount + ")", "primary") +
-        btn("/pages/portal/subscriptions?status=cancelled", "See cancelled (reactivate)", "secondary") +
+        btn(basePrefix + "/portal/subscriptions?status=active", "View subscriptions", "primary") +
       "</div>";
 
-    setRoot(
+    // Rewards card placeholder (drop widget into #sp-rewards-widget later)
+    var rewardsCard =
+      card(
+        "<div class='sp-home-rewards'>" +
+          "<div class='sp-home-rewards__head'>" +
+            "<div class='sp-title'>Rewards</div>" +
+            "<div class='sp-muted'>Your points and perks will show here.</div>" +
+          "</div>" +
+          "<div id='sp-rewards-widget' class='sp-rewards-widget'>" +
+            "<div class='sp-muted'>Rewards widget placeholder</div>" +
+          "</div>" +
+        "</div>"
+      );
+
+    // Main home card
+    var homeCard =
       card(
         header +
         emailLine +
@@ -92,7 +132,14 @@
           "This is a secure subscription portal. Updates made here apply directly to your next shipment." +
         "</div>" +
         actions
-      )
+      );
+
+    // Stack cards
+    setRoot(
+      "<div class='sp-wrap sp-grid'>" +
+        homeCard +
+        rewardsCard +
+      "</div>"
     );
   }
 
