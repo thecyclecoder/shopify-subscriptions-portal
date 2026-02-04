@@ -57,23 +57,33 @@
     return false;
   }
 
-  function billingLabel(policy, utils) {
-    if (utils && typeof utils.billingLabel === "function") return utils.billingLabel(policy);
-
-    var interval = policy && policy.interval ? String(policy.interval).toUpperCase() : "";
-    var count = policy && policy.intervalCount != null ? Number(policy.intervalCount) : NaN;
-
-    if (interval === "WEEK") {
-      if (count === 4) return "Monthly";
-      if (count === 8) return "Every other month";
-      if (count === 2) return "Twice a month";
-    }
-
-    if (interval && Number.isFinite(count) && count > 0) {
-      return String(count) + " " + interval.toLowerCase() + (count > 1 ? "s" : "");
-    }
-    return "Billing schedule";
+function billingLabel(contract, utils) {
+  // If soft paused, override everything
+  if (utils && typeof utils.isSoftPaused === "function" && utils.isSoftPaused(contract)) {
+    return "Paused";
   }
+
+  var policy = contract && contract.billingPolicy;
+  var interval = policy && policy.interval ? String(policy.interval).toUpperCase() : "";
+  var count = policy && policy.intervalCount != null ? Number(policy.intervalCount) : NaN;
+
+  if (interval === "WEEK") {
+    if (count === 4) return "Monthly";
+    if (count === 8) return "Every other month";
+    if (count === 2) return "Twice a month";
+  }
+
+  if (interval && Number.isFinite(count) && count > 0) {
+    return (
+      String(count) +
+      " " +
+      interval.toLowerCase() +
+      (count > 1 ? "s" : "")
+    );
+  }
+
+  return "Billing schedule";
+}
 
   function money(m, utils) {
     if (utils && typeof utils.money === "function") return utils.money(m);
@@ -139,7 +149,7 @@
     var metaRight = "";
     if (softPaused) {
       var untilLabel = (typeof utils.getPausedUntilLabel === "function") ? utils.getPausedUntilLabel(c) : "";
-      metaRight = untilLabel ? " • Until: " + untilLabel : "";
+      metaRight = untilLabel ? " until: " + untilLabel : "";
     } else if (c && c.nextBillingDate) {
       metaRight = " • Next: " + fmtDate(c.nextBillingDate, utils);
     }
@@ -148,7 +158,7 @@
       ui.el("div", { class: "sp-subcard__header-left" }, [
         ui.el("div", { class: "sp-subcard__title" }, ["Superfoods Subscription"]),
         ui.el("div", { class: "sp-subcard__meta sp-muted" }, [
-          billingLabel(c && c.billingPolicy, utils) + metaRight,
+          billingLabel(c, utils) + metaRight,
         ]),
       ]),
       pill(ui, pillText, statusKind),

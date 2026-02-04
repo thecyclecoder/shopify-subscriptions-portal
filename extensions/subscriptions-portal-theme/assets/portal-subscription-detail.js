@@ -3,15 +3,12 @@
   window.__SP = window.__SP || {};
 
   function getContractId() {
-    // We ONLY support short ids now (non-gid)
-    // Prefer query param (?id=123456789)
     try {
       var params = new URLSearchParams(window.location.search || "");
       var qid = params.get("id");
       if (qid) return String(qid);
     } catch (e) {}
 
-    // Fallback to /portal/subscription/:id (if you ever switch routing)
     var parts = String(window.location.pathname || "").split("/").filter(Boolean);
     var idx = parts.indexOf("subscription");
     if (idx === -1) return "";
@@ -47,93 +44,14 @@
 
   function findContract(contracts, shortContractId) {
     if (!shortContractId) return null;
-
     var want = String(shortContractId).trim();
     if (!want) return null;
 
-    // Only match on short id (tail)
     for (var i = 0; i < contracts.length; i++) {
       var c = contracts[i];
       if (!c) continue;
       var cid = shortId(c.id);
       if (cid && cid === want) return c;
-    }
-
-    return null;
-  }
-
-  // ---- UI feedback + single-flight action helpers -------------------------
-
-  var __sp_busy = false;
-
-  function showToast(ui, text, kind) {
-    // kind: "success" | "error" | "info"
-    var cls = "sp-toast";
-    if (kind === "success") cls += " sp-toast--success";
-    if (kind === "error") cls += " sp-toast--error";
-
-    var toast = ui.el("div", { class: cls }, [
-      ui.el("div", { class: "sp-toast__body" }, [text || ""])
-    ]);
-
-    // Ensure a container at top of page
-    var host = document.querySelector(".sp-detail");
-    if (!host) host = window.__SP.root || document.body;
-
-    // Remove existing toast if any
-    var existing = host.querySelector(".sp-toast");
-    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-
-    host.insertBefore(toast, host.firstChild);
-
-    var ttl = 15000; // 15s
-    window.setTimeout(function () {
-      try {
-        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
-      } catch (e) {}
-    }, ttl);
-  }
-
-  function showBlockingModal(ui, text) {
-    var overlay = ui.el("div", { class: "sp-modal sp-modal--blocking" }, [
-      ui.el("div", { class: "sp-modal__card" }, [
-        ui.el("div", { class: "sp-modal__title" }, ["Processing changes…"]),
-        ui.el("div", { class: "sp-modal__body sp-muted" }, [text || "Please wait."])
-      ])
-    ]);
-
-    document.body.appendChild(overlay);
-    return function close() {
-      try {
-        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      } catch (e) {}
-    };
-  }
-
-  async function withBusy(ui, actionFn) {
-    if (__sp_busy) return { ok: false, error: "busy" };
-    __sp_busy = true;
-
-    var close = showBlockingModal(ui, "Please do not refresh while we update your subscription.");
-    try {
-      return await actionFn();
-    } finally {
-      __sp_busy = false;
-      close();
-    }
-  }
-
-  async function refreshContractByShortId(shortContractId) {
-    var home = await window.__SP.api.requestJson("home");
-    var list = (window.__SP.utils && window.__SP.utils.pickContracts)
-      ? window.__SP.utils.pickContracts(home)
-      : (home && (home.contracts || home.contracts_preview) ? (home.contracts || home.contracts_preview) : []);
-
-    var arr = Array.isArray(list) ? list : [];
-    for (var i = 0; i < arr.length; i++) {
-      var c = arr[i];
-      if (!c) continue;
-      if (shortId(c.id) === String(shortContractId)) return c;
     }
     return null;
   }
@@ -144,18 +62,11 @@
       : String(s || "").toUpperCase();
   }
 
-  function fmtDate(iso) {
-    return (window.__SP.utils && window.__SP.utils.fmtDate)
-      ? window.__SP.utils.fmtDate(iso)
-      : (iso || "");
-  }
-
   function fmtPrettyDate(iso) {
     if (!iso) return "";
     var t = Date.parse(iso);
     if (!isFinite(t)) return "";
 
-    // Force a consistent output like "Feb 9, 2026"
     var s = "";
     try {
       s = new Intl.DateTimeFormat("en-US", {
@@ -168,34 +79,7 @@
       s = new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
     }
 
-    // "Feb 9, 2026" -> "Feb. 9, 2026"
     return s.replace(/^([A-Za-z]{3})\s/, "$1. ");
-  }
-
-  function billingLabel(policy) {
-    return (window.__SP.utils && window.__SP.utils.billingLabel)
-      ? window.__SP.utils.billingLabel(policy)
-      : "Billing schedule";
-  }
-
-  function frequencyLabel(policy) {
-    if (!policy) return "";
-
-    var interval = policy.interval ? String(policy.interval).toUpperCase() : "";
-    var count = policy.intervalCount != null ? Number(policy.intervalCount) : NaN;
-
-    // Your display rules
-    if (interval === "WEEK") {
-      if (count === 4) return "Monthly";
-      if (count === 8) return "Every 2 Months";
-      if (count === 2) return "Twice a Month";
-    }
-
-    // Fallback
-    if (interval && isFinite(count) && count > 0) {
-      return String(count) + " " + interval.toLowerCase() + (count > 1 ? "s" : "");
-    }
-    return "";
   }
 
   function isShipProt(ln) {
@@ -213,19 +97,11 @@
   }
 
   function disabledBtn(ui, text) {
-    return ui.el(
-      "button",
-      { type: "button", class: "sp-btn sp-btn--disabled", disabled: true },
-      [text]
-    );
+    return ui.el("button", { type: "button", class: "sp-btn sp-btn--disabled", disabled: true }, [text]);
   }
 
   function disabledGhostBtn(ui, text) {
-    return ui.el(
-      "button",
-      { type: "button", class: "sp-btn sp-btn--ghost sp-btn--disabled", disabled: true },
-      [text]
-    );
+    return ui.el("button", { type: "button", class: "sp-btn sp-btn--ghost sp-btn--disabled", disabled: true }, [text]);
   }
 
   function sectionTitle(ui, title, sub) {
@@ -268,14 +144,45 @@
     return await window.__SP.api.requestJson("home");
   }
 
+  function getSoftPauseInfo(contract) {
+    var utils = window.__SP && window.__SP.utils;
+    var paused = !!(utils && typeof utils.isSoftPaused === "function" && utils.isSoftPaused(contract));
+
+    var untilLabel = "";
+    if (paused && utils && typeof utils.getPausedUntilLabel === "function") {
+      untilLabel = String(utils.getPausedUntilLabel(contract) || "");
+    }
+    if (paused && !untilLabel && contract && contract.nextBillingDate) {
+      untilLabel = fmtPrettyDate(contract.nextBillingDate);
+    }
+
+    return { paused: paused, untilLabel: untilLabel };
+  }
+
+  function frequencyLabel(policy) {
+    if (!policy) return "";
+    var interval = policy.interval ? String(policy.interval).toUpperCase() : "";
+    var count = policy.intervalCount != null ? Number(policy.intervalCount) : NaN;
+
+    if (interval === "WEEK") {
+      if (count === 4) return "Monthly";
+      if (count === 8) return "Every 2 Months";
+      if (count === 2) return "Twice a Month";
+    }
+
+    if (interval && isFinite(count) && count > 0) {
+      return String(count) + " " + interval.toLowerCase() + (count > 1 ? "s" : "");
+    }
+    return "";
+  }
+
   async function render() {
     var ui = window.__SP.ui;
     ui.ensureBaseStyles();
-
     ui.setRoot(ui.loading("Loading subscription…"));
 
-    var utils = (window.__SP && window.__SP.utils) || null;
-    if (!utils || typeof utils.pickContracts !== "function" || typeof utils.isSoftPaused !== "function") {
+    var utils = window.__SP && window.__SP.utils;
+    if (!utils || typeof utils.pickContracts !== "function") {
       ui.setRoot(
         ui.el("div", { class: "sp-wrap sp-grid" }, [
           ui.el("div", { class: "sp-card" }, [
@@ -287,7 +194,11 @@
       return;
     }
 
-    var id = getContractId(); // short id
+    var actions = window.__SP.actions || {};
+    var hasPause = typeof actions.pause === "function";
+    var hasResume = typeof actions.resume === "function";
+
+    var id = getContractId();
     var cfg = getConfig();
 
     var homeData;
@@ -305,7 +216,6 @@
       return;
     }
 
-    // IMPORTANT: meta-aware pickContracts (attaches __attrs + __softPaused etc)
     var contractsAll = utils.pickContracts(homeData);
     var contract = findContract(Array.isArray(contractsAll) ? contractsAll : [], id);
 
@@ -322,47 +232,37 @@
     }
 
     var status = normalizeStatus(contract.status);
-    var softPaused = (status === "ACTIVE") && utils.isSoftPaused(contract);
-    var pausedUntilLabel = (softPaused && typeof utils.getPausedUntilLabel === "function")
-      ? utils.getPausedUntilLabel(contract)
-      : "";
+
+    var pauseInfo = getSoftPauseInfo(contract);
+    var isSoftPaused = !!pauseInfo.paused;
+    var pausedUntilLabel = pauseInfo.untilLabel || "";
 
     var effectiveStatusText = (status === "ACTIVE" ? "Active" : status === "CANCELLED" ? "Cancelled" : status);
     var effectiveStatusKind = (status === "ACTIVE" ? "active" : status === "CANCELLED" ? "cancelled" : "neutral");
-
-    if (softPaused) {
+    if (isSoftPaused) {
       effectiveStatusText = "Paused";
       effectiveStatusKind = "paused";
     }
 
-    // Age gating: based on createdAt
     var createdMs = toNumDate(contract.createdAt);
     var now = Date.now();
     var ageDays = createdMs ? daysBetween(createdMs, now) : 9999;
     var isYoung = ageDays < cfg.lockDays;
 
-    // Hard portal lock
     var isPortalLocked = !!cfg.portalLock;
-
-    // Read-only logic
     var isReadOnly = isYoung || isPortalLocked;
 
-    // Split shipping protection out of lines
+    // Lines: separate shipping protection
     var linesAll = Array.isArray(contract.lines) ? contract.lines : [];
     var shipLine = null;
     var lines = [];
-
     var shipProdId = String((cfg && cfg.shippingProtectionProductId) || "").trim();
 
     function lineMatchesShipProtection(ln) {
       if (!ln) return false;
 
-      // 1) Existing heuristic
-      try {
-        if (isShipProt(ln)) return true;
-      } catch (e) {}
+      try { if (isShipProt(ln)) return true; } catch (e) {}
 
-      // 2) Product ID match
       if (shipProdId) {
         var lp = "";
         try {
@@ -373,7 +273,6 @@
         var lpShort = shortId(lp);
         if (lpShort && lpShort === shipProdId) return true;
       }
-
       return false;
     }
 
@@ -386,12 +285,10 @@
       lines.push(ln);
     });
 
-    // Header subtitle: paused uses "Paused until", otherwise "Your next order is on"
+    // Header subtitle
     var subtitleText = "";
-    if (softPaused) {
-      subtitleText = pausedUntilLabel
-        ? ("Paused until " + pausedUntilLabel)
-        : "This subscription is currently paused.";
+    if (isSoftPaused) {
+      subtitleText = pausedUntilLabel ? ("Paused until " + pausedUntilLabel) : "This subscription is paused.";
     } else if (contract.nextBillingDate) {
       var pretty = fmtPrettyDate(contract.nextBillingDate);
       subtitleText = pretty ? ("Your next order is on " + pretty) : "";
@@ -412,96 +309,69 @@
     // Notices
     var notices = [];
     if (isYoung) {
-      notices.push(
-        renderNotice(
-          ui,
-          "Your subscription is being set up. Once you receive your first order, you can return here and make edits to upcoming orders."
-        )
-      );
+      notices.push(renderNotice(
+        ui,
+        "Your subscription is being set up. Once you receive your first order, you can return here and make edits to upcoming orders."
+      ));
     } else if (isPortalLocked) {
-      notices.push(
-        renderNotice(
-          ui,
-          "This subscription is currently locked. You can still contact support if you need help."
-        )
-      );
+      notices.push(renderNotice(
+        ui,
+        "This subscription is currently locked. You can still contact support if you need help."
+      ));
     }
 
-    // Pause section (wired)
-    function pauseClick(days) {
-      if (isReadOnly) return;
-      // If already paused, avoid stacking pauses in UI
-      if (softPaused) return;
-
-      withBusy(ui, async function () {
-        try {
-          var contractShortId = Number(shortId(contract.id));
-
-          var resp = await window.__SP.api.postJson("pause", {
-            contractId: contractShortId,
-            pauseDays: Number(days)
-          });
-
-          if (!resp || resp.ok === false) {
-            throw new Error((resp && resp.error) ? resp.error : "pause_failed");
-          }
-
-          // Refresh contract from home and update local state
-          var fresh = await refreshContractByShortId(String(contractShortId));
-          if (fresh) {
-            contract = fresh;
-          }
-
-          showToast(ui, "Done. Your next order was pushed out " + String(days) + " days.", "success");
-
-          // Re-render the screen
-          await render();
-          return { ok: true };
-        } catch (e) {
-          showToast(ui, "Sorry — we couldn’t update your subscription. Please try again.", "error");
-          return { ok: false, error: String(e && e.message ? e.message : e) };
-        }
-      });
+    // Action button helpers
+    function btnProps(onclick) {
+      var p = { type: "button", class: "sp-btn", onclick: onclick };
+      if (isReadOnly) {
+        p.class += " sp-btn--disabled";
+        p.disabled = true;
+      }
+      return p;
     }
 
-    var pauseLocked = isReadOnly || softPaused || (status === "CANCELLED");
+    function onPause(days) {
+      if (isReadOnly || !hasPause) return;
+      actions.pause(ui, contract.id, Number(days)).then(function () { render(); });
+    }
 
-    var btn30Props = {
-      type: "button",
-      class: "sp-btn" + (pauseLocked ? " sp-btn--disabled" : ""),
-      onclick: function () { pauseClick(30); }
-    };
-    if (pauseLocked) btn30Props.disabled = true;
+    function onResume() {
+      if (isReadOnly || !hasResume) return;
+      actions.resume(ui, contract.id, 1).then(function () { render(); });
+    }
 
-    var btn60Props = {
-      type: "button",
-      class: "sp-btn" + (pauseLocked ? " sp-btn--disabled" : ""),
-      onclick: function () { pauseClick(60); }
-    };
-    if (pauseLocked) btn60Props.disabled = true;
+    // Pause/Resume card
+    var pauseOrResumeCard = null;
 
-    var pauseHint = "";
-    if (status === "CANCELLED") pauseHint = "This subscription is cancelled.";
-    else if (softPaused) pauseHint = pausedUntilLabel ? ("Paused until " + pausedUntilLabel + ".") : "This subscription is currently paused.";
-    else if (isReadOnly) pauseHint = "Actions will unlock when available.";
-    else pauseHint = "Subscription will resume after the selected period ends.";
+    if (isSoftPaused) {
+      var resumeHelp =
+        "Resuming sets your next order to tomorrow, so you can review and make changes before it is placed.";
 
-    var pauseSub = softPaused && pausedUntilLabel
-      ? ("This subscription is paused until " + pausedUntilLabel + ".")
-      : "Pause pushes your next order out from today.";
-
-    var pauseCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
-      sectionTitle(ui, "Pause", pauseSub),
-      ui.el("div", { class: "sp-detail__actions" }, [
-        ui.el("button", btn30Props, ["Pause 30 days"]),
-        ui.el("button", btn60Props, ["Pause 60 days"])
-      ]),
-      ui.el("p", { class: "sp-muted sp-detail__hint" }, [pauseHint])
-    ]);
+      pauseOrResumeCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
+        sectionTitle(ui, "Resume", "Restart your subscription when you are ready."),
+        ui.el("p", { class: "sp-muted sp-detail__hint" }, [resumeHelp]),
+        ui.el("div", { class: "sp-detail__actions" }, [
+          hasResume ? ui.el("button", btnProps(onResume), ["Resume subscription"]) : disabledBtn(ui, "Resume subscription")
+        ]),
+        pausedUntilLabel
+          ? ui.el("p", { class: "sp-muted sp-detail__hint" }, ["Currently paused until " + pausedUntilLabel + "."])
+          : ui.el("span", {}, [])
+      ]);
+    } else {
+      pauseOrResumeCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
+        sectionTitle(ui, "Pause", "Pause pushes your next order out from today."),
+        ui.el("div", { class: "sp-detail__actions" }, [
+          hasPause ? ui.el("button", btnProps(function () { onPause(30); }), ["Pause 30 days"]) : disabledBtn(ui, "Pause 30 days"),
+          hasPause ? ui.el("button", btnProps(function () { onPause(60); }), ["Pause 60 days"]) : disabledBtn(ui, "Pause 60 days")
+        ]),
+        ui.el("p", { class: "sp-muted sp-detail__hint" }, [
+          isReadOnly ? "Actions will unlock when available." : "Subscription will resume after the selected period ends."
+        ])
+      ]);
+    }
 
     // Frequency card
     var freqText = frequencyLabel(contract.billingPolicy);
-
     var frequencyCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Your Schedule", "How often your superfoods are sent."),
       ui.el("div", { class: "sp-detail__freq" }, [
@@ -518,9 +388,7 @@
     var itemsCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Items", "What’s included in your subscription."),
       ui.el("div", { class: "sp-detail__lines" }, (function () {
-        if (!lines.length) {
-          return [ui.el("p", { class: "sp-muted" }, ["No items found on this subscription."])];
-        }
+        if (!lines.length) return [ui.el("p", { class: "sp-muted" }, ["No items found on this subscription."])];
         return lines.map(function (ln) { return renderLine(ui, ln); });
       })()),
       ui.el("div", { class: "sp-detail__items-actions" }, [
@@ -534,43 +402,35 @@
       ])
     ]);
 
-    // Shipping Address card (placeholder)
+    // Shipping card
     var shippingAddressCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Shipping", "Update where your next order ships."),
       ui.el("div", { class: "sp-detail__actions" }, [
         disabledBtn(ui, "Change shipping address"),
-        ui.el(
-          "a",
-          {
-            class: "sp-btn sp-btn--ghost",
-            href: "https://account.superfoodscompany.com/orders",
-            target: "_blank",
-            rel: "noopener"
-          },
-          ["View recent orders"]
-        )
+        ui.el("a", {
+          class: "sp-btn sp-btn--ghost",
+          href: "https://account.superfoodscompany.com/orders",
+          target: "_blank",
+          rel: "noopener"
+        }, ["View recent orders"])
       ])
     ]);
 
-    // Shipping protection toggle (placeholder)
+    // Ship protection placeholder
     var shipProtCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Shipping Protection", "Protect orders from loss or theft during shipping."),
       ui.el("div", { class: "sp-detail__shiprow" }, [
         ui.el("div", { class: "sp-detail__shipmeta" }, [
-          ui.el("div", { class: "sp-detail__shipstate" }, [
-            (shipLine ? "Currently on" : "Currently off")
-          ]),
+          ui.el("div", { class: "sp-detail__shipstate" }, [(shipLine ? "Currently on" : "Currently off")]),
           ui.el("p", { class: "sp-muted sp-detail__shipsub" }, [
             shipLine ? "This will appear as a line item on your subscription." : "Turn it on to protect your next shipment."
           ])
         ]),
-        ui.el("button", { type: "button", class: "sp-toggle sp-toggle--disabled", disabled: true }, [
-          shipLine ? "On" : "Off"
-        ])
+        ui.el("button", { type: "button", class: "sp-toggle sp-toggle--disabled", disabled: true }, [shipLine ? "On" : "Off"])
       ])
     ]);
 
-    // Add-ons upsell (placeholder)
+    // Add-ons placeholder
     var addonsCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "One-time add-ons", "Add to your next order (one-time only)."),
       ui.el("div", { class: "sp-detail__addons" }, [
@@ -581,16 +441,11 @@
       ])
     ]);
 
-    // Coupon (placeholder)
+    // Coupon placeholder
     var couponCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Coupon", "Apply a discount to your next subscription order."),
       ui.el("div", { class: "sp-detail__coupon" }, [
-        ui.el("input", {
-          class: "sp-input",
-          type: "text",
-          placeholder: "Enter coupon code",
-          disabled: true
-        }, []),
+        ui.el("input", { class: "sp-input", type: "text", placeholder: "Enter coupon code", disabled: true }, []),
         ui.el("button", { type: "button", class: "sp-btn sp-btn--disabled", disabled: true }, ["Apply"])
       ]),
       ui.el("p", { class: "sp-muted sp-detail__hint" }, ["Coming next."])
@@ -612,7 +467,7 @@
       ])
     ]);
 
-    // Cancel (placeholder, hidden if too young)
+    // Cancel placeholder
     var cancelCard = null;
     if (!isYoung) {
       cancelCard = ui.el("div", { class: "sp-card sp-detail__cancel" }, [
@@ -627,12 +482,11 @@
     }
 
     var main = ui.el("div", { class: "sp-wrap sp-detail" }, [header]);
-
     notices.forEach(function (n) { main.appendChild(n); });
 
     var grid = ui.el("div", { class: "sp-grid sp-detail__grid" }, [
       ui.el("div", { class: "sp-detail__col" }, [
-        pauseCard,
+        pauseOrResumeCard,
         shippingAddressCard,
         shipProtCard,
         couponCard,
