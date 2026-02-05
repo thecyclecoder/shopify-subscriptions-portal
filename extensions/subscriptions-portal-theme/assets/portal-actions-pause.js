@@ -2,12 +2,12 @@
   window.__SP = window.__SP || {};
   window.__SP.actions = window.__SP.actions || {};
 
-  function shortId(gid) {
-    var s = String(gid || "");
-    if (!s) return "";
-    var parts = s.split("/");
-    return parts[parts.length - 1] || s;
-  }
+          function shortId(gid) {
+            var s = String(gid || "");
+            if (!s) return "";
+            var parts = s.split("/");
+            return parts[parts.length - 1] || s;
+          }
 
   window.__SP.actions.pause = async function pause(ui, contractGid, days) {
     var busy = window.__SP.actions && window.__SP.actions.busy;
@@ -15,6 +15,8 @@
 
     return await busy.withBusy(ui, async function () {
       try {
+
+
         var contractShortId = Number(shortId(contractGid));
 
         var resp = await window.__SP.api.postJson("pause", {
@@ -34,6 +36,7 @@
         return { ok: true, contract: fresh || null };
         
       } catch (e) {
+
         busy.showToast(ui, "Sorry — we couldn’t update your subscription. Please try again.", "error");
         return { ok: false, error: String(e && e.message ? e.message : e) };
       }

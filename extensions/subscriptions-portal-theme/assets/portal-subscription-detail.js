@@ -33,6 +33,24 @@
     return Math.floor(Math.abs(bMs - aMs) / MS_PER_DAY);
   }
 
+ function getRecentShipChange(contractGid) {
+  try {
+    var key = "__sp_recent_shipaddr__" + String(shortId(contractGid) || "");
+    var raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.text) return null;
+
+    // Backwards compat: ensure obj.data exists
+    if (!obj.data || typeof obj.data !== "object") obj.data = null;
+
+    return obj;
+  } catch (e) {
+    return null;
+  }
+}
+
   function getConfig() {
     var cfg = (window.__SP && window.__SP.config) || {};
     return {
@@ -403,64 +421,92 @@
     ]);
 
     // Shipping Address card
-    var shippingAddressCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
-      sectionTitle(ui, "Shipping", "Update where your next order ships."),
-      ui.el("div", { class: "sp-detail__actions" }, [
-        ui.el(
-          "button",
-          Object.assign(
-            {
-              type: "button",
-              class: "sp-btn" + (isReadOnly ? " sp-btn--disabled" : ""),
-              onclick: function () {
-                if (isReadOnly) return;
+var recentShip = getRecentShipChange(contract.id);
 
-                var act = window.__SP.actions && window.__SP.actions.changeShippingAddress;
-                if (!act) {
-                  try { console.warn("[Portal] changeShippingAddress action not loaded"); } catch (e) {}
-                  return;
-                }
+// Prefill from session if we have it, otherwise blank
+var initialAddress = (recentShip && recentShip.data) ? {
+  firstName: recentShip.data.firstName || "",
+  lastName: recentShip.data.lastName || "",
+  address1: recentShip.data.address1 || "",
+  address2: recentShip.data.address2 || "",
+  city: recentShip.data.city || "",
+  provinceCode: recentShip.data.provinceCode || "",
+  zip: recentShip.data.zip || ""
+} : {
+  firstName: (window.__SP && window.__SP.el && window.__SP.el.getAttribute("data-first-name")) ? String(window.__SP.el.getAttribute("data-first-name")) : "",
+  lastName: (window.__SP && window.__SP.el && window.__SP.el.getAttribute("data-last-name")) ? String(window.__SP.el.getAttribute("data-last-name")) : "",
+  address1: "",
+  address2: "",
+  city: "",
+  provinceCode: "",
+  zip: ""
+};
 
-                act(
-                  ui,
-                  contract.id,
-                  {
-                    address1: "",
-                    address2: "",
-                    city: "",
-                    provinceCode: "",
-                    zip: ""
-                  },
-                  {
-                    methodType: "SHIPPING",
-                    countryCode: "US",
-                    country: "United States"
-                  }
-                ).then(function (r) {
-                  if (r && r.ok) {
-                    try { window.__SP.screens.subscriptionDetail.render(); } catch (e) {}
-                  }
-                });
-              }
-            },
-            // 🔑 ONLY add disabled attribute when read-only
-            isReadOnly ? { disabled: true } : {}
-          ),
-          ["Change shipping address"]
-        ),
-
-        ui.el(
-          "a",
-          {
-            class: "sp-btn sp-btn--ghost",
-            href: "https://account.superfoodscompany.com/orders",
-            target: "_blank",
-            rel: "noopener"
-          },
-          ["View recent orders"]
-        )
+var recentShipMsg = (recentShip && recentShip.text)
+  ? ui.el("div", { class: "sp-note sp-note--success" }, [
+      ui.el("div", { class: "sp-note__title" }, ["Updated"]),
+      ui.el("div", { class: "sp-note__body sp-muted" }, [
+        "You recently changed your shipping address to: " + String(recentShip.text)
       ])
-    ]);
+    ])
+  : null;
+
+var shippingAddressCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
+  sectionTitle(ui, "Shipping", "Update where your next order ships."),
+
+  // ✅ only show if session has a change
+  recentShipMsg ? recentShipMsg : ui.el("span", {}, []),
+
+  ui.el("div", { class: "sp-detail__actions" }, [
+    ui.el(
+      "button",
+      Object.assign(
+        {
+          type: "button",
+          class: "sp-btn" + (isReadOnly ? " sp-btn--disabled" : ""),
+          onclick: function () {
+            if (isReadOnly) return;
+
+            var act = window.__SP.actions && window.__SP.actions.changeShippingAddress;
+            if (!act) {
+              try { console.warn("[Portal] changeShippingAddress action not loaded"); } catch (e) {}
+              return;
+            }
+
+            act(
+              ui,
+              contract.id,
+              // ✅ prefill from session if present
+              initialAddress,
+              {
+                methodType: "SHIPPING",
+                countryCode: "US",
+                country: "United States"
+              }
+            ).then(function (r) {
+              if (r && r.ok) {
+                try { window.__SP.screens.subscriptionDetail.render(); } catch (e) {}
+              }
+            });
+          }
+        },
+        isReadOnly ? { disabled: true } : {}
+      ),
+      ["Change shipping address"]
+    ),
+
+    ui.el(
+      "a",
+      {
+        class: "sp-btn sp-btn--ghost",
+        href: "https://account.superfoodscompany.com/orders",
+        target: "_blank",
+        rel: "noopener"
+      },
+      ["View recent orders"]
+    )
+  ])
+]);
 
     // Ship protection placeholder
     var shipProtCard = ui.el("div", { class: "sp-card sp-detail__card" }, [

@@ -2,12 +2,12 @@
   window.__SP = window.__SP || {};
   window.__SP.actions = window.__SP.actions || {};
 
-  function shortId(gid) {
-    var s = String(gid || "");
-    if (!s) return "";
-    var parts = s.split("/");
-    return parts[parts.length - 1] || s;
-  }
+          function shortId(gid) {
+          var s = String(gid || "");
+          if (!s) return "";
+          var parts = s.split("/");
+          return parts[parts.length - 1] || s;
+        }
 
   // Expected server behavior: set nextBillingDate = now + resumeInDays, and clear pause attrs.
   window.__SP.actions.resume = async function resume(ui, contractGid, resumeInDays) {
@@ -16,6 +16,7 @@
 
     return await busy.withBusy(ui, async function () {
       try {
+
         var contractShortId = Number(shortId(contractGid));
 
         var resp = await window.__SP.api.postJson("resume", {
