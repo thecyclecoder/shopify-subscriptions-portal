@@ -149,36 +149,75 @@
   }
 
   function derivePauseInfo(contract, attrs) {
-    // “soft pause” = we keep contract ACTIVE but we push nextBillingDate and set portal_* attrs
-    attrs = attrs || Object.create(null);
+  attrs = attrs || Object.create(null);
 
-    var lastAction = safeStr(attrs.portal_last_action).toLowerCase();
-    var pauseDaysRaw = attrs.portal_pause_days;
-    var pauseDays = pauseDaysRaw != null ? Number(pauseDaysRaw) : NaN;
-    var actionAt = safeStr(attrs.portal_last_action_at);
-
-    var isPauseAction = lastAction.indexOf("pause_") === 0 || lastAction === "pause";
-    var hasPauseDays = isFinite(pauseDays) && pauseDays > 0;
-
-    // pausedUntil: prefer contract.nextBillingDate, fallback to attrs.portal_paused_until if you ever add it
-    var pausedUntilIso = safeStr(contract && contract.nextBillingDate) || safeStr(attrs.portal_paused_until);
-    var pausedUntilTs = pausedUntilIso ? Date.parse(pausedUntilIso) : NaN;
-    var pausedUntil = isFinite(pausedUntilTs) ? new Date(pausedUntilTs) : null;
-
-    // Soft paused when it looks like a pause action AND we have a future nextBillingDate
-    var now = Date.now();
-    var isFuture = pausedUntil ? pausedUntil.getTime() > now : false;
-    var softPaused = !!(isPauseAction && hasPauseDays && isFuture);
-
-    return {
-      softPaused: softPaused,
-      pauseDays: hasPauseDays ? pauseDays : null,
-      pausedUntilIso: pausedUntilIso || "",
-      pausedUntilLabel: pausedUntilIso ? fmtDate(pausedUntilIso) : "",
-      lastAction: lastAction,
-      lastActionAt: actionAt,
-    };
+  function dbg() {
+    if (window.__SP && window.__SP.debug) {
+      try { console.log.apply(console, arguments); } catch (_) {}
+    }
   }
+
+  var lastActionRaw = safeStr(attrs.portal_last_action);
+  var lastAction = lastActionRaw.toLowerCase();
+
+  var pauseDays = NaN;
+
+  // Prefer explicit pause days attribute
+  if (attrs.portal_pause_days != null && attrs.portal_pause_days !== "") {
+    pauseDays = Number(attrs.portal_pause_days);
+  }
+
+  // Fallback: parse from portal_last_action like "pause_30"
+  if (!isFinite(pauseDays) || pauseDays <= 0) {
+    var m = /pause[_\- ]?(\d+)/i.exec(lastActionRaw);
+    if (m && m[1]) pauseDays = Number(m[1]);
+  }
+
+  var hasPauseDays = isFinite(pauseDays) && pauseDays > 0;
+
+  var actionAt = safeStr(attrs.portal_last_action_at);
+
+  var isPauseAction =
+    lastAction.indexOf("pause") === 0; // pause, pause_30, pause-60
+
+  // Prefer nextBillingDate as source of truth
+  var pausedUntilIso =
+    safeStr(contract && contract.nextBillingDate) ||
+    safeStr(attrs.portal_paused_until);
+
+  var pausedUntilTs = pausedUntilIso ? Date.parse(pausedUntilIso) : NaN;
+  var now = Date.now();
+  var isFuture = isFinite(pausedUntilTs) && pausedUntilTs > now;
+
+  var softPaused = !!(isPauseAction && hasPauseDays && isFuture);
+
+  // 🔍 DEBUG LOGGING
+  dbg("[derivePauseInfo]", {
+    contractId: contract && contract.id,
+    status: contract && contract.status,
+    attrs: attrs,
+    lastActionRaw: lastActionRaw,
+    parsedPauseDays: pauseDays,
+    hasPauseDays: hasPauseDays,
+    nextBillingDate: contract && contract.nextBillingDate,
+    pausedUntilIso: pausedUntilIso,
+    isFuture: isFuture,
+    softPaused: softPaused,
+  });
+
+  // IMPORTANT:
+  // Only expose paused-until label if actually paused
+  var label = softPaused && pausedUntilIso ? fmtDate(pausedUntilIso) : "";
+
+  return {
+    softPaused: softPaused,
+    pauseDays: hasPauseDays ? pauseDays : null,
+    pausedUntilIso: softPaused ? pausedUntilIso : "",
+    pausedUntilLabel: label,
+    lastAction: lastActionRaw,
+    lastActionAt: actionAt,
+  };
+}
 
   function attachMetaToContracts(contracts, metaArr) {
     if (!Array.isArray(contracts) || !contracts.length) return contracts || [];

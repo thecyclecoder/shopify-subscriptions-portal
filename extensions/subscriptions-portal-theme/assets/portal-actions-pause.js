@@ -25,11 +25,14 @@
         if (!resp || resp.ok === false) {
           throw new Error((resp && resp.error) ? resp.error : "pause_failed");
         }
-
+        if (window.__SP.api && typeof window.__SP.api.clearCaches === "function") {
+          window.__SP.api.clearCaches();
+        }
         var fresh = await busy.refreshContractByShortId(String(contractShortId));
         busy.showToast(ui, "Done. Your next order was pushed out " + String(days) + " days.", "success");
 
         return { ok: true, contract: fresh || null };
+        
       } catch (e) {
         busy.showToast(ui, "Sorry — we couldn’t update your subscription. Please try again.", "error");
         return { ok: false, error: String(e && e.message ? e.message : e) };

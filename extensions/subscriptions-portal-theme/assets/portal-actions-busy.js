@@ -57,24 +57,20 @@
     }
   }
 
-  async function refreshContractByShortId(shortContractId) {
-    var home = await window.__SP.api.requestJson("home");
-    var list = (window.__SP.utils && window.__SP.utils.pickContracts)
-      ? window.__SP.utils.pickContracts(home)
-      : (home && (home.contracts || home.contracts_preview) ? (home.contracts || home.contracts_preview) : []);
+async function refreshContractByShortId(shortContractId) {
+  var home = await window.__SP.api.requestJson("home", {}, { force: true });
+  var list = (window.__SP.utils && window.__SP.utils.pickContracts)
+    ? window.__SP.utils.pickContracts(home)
+    : (home && (home.contracts || home.contracts_preview) ? (home.contracts || home.contracts_preview) : []);
 
-    var arr = Array.isArray(list) ? list : [];
-    var want = String(shortContractId);
-    for (var i = 0; i < arr.length; i++) {
-      var c = arr[i];
-      if (!c) continue;
-      var gid = (c && c.id) ? String(c.id) : "";
-      var parts = gid.split("/");
-      var sid = parts[parts.length - 1] || gid;
-      if (sid === want) return c;
-    }
-    return null;
+  var arr = Array.isArray(list) ? list : [];
+  for (var i = 0; i < arr.length; i++) {
+    var c = arr[i];
+    if (!c) continue;
+    if (shortId(c.id) === String(shortContractId)) return c;
   }
+  return null;
+}
 
   window.__SP.actions.busy = {
     withBusy: withBusy,

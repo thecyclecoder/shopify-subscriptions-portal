@@ -26,7 +26,9 @@
         if (!resp || resp.ok === false) {
           throw new Error((resp && resp.error) ? resp.error : "resume_failed");
         }
-
+        if (window.__SP.api && typeof window.__SP.api.clearCaches === "function") {
+          window.__SP.api.clearCaches();
+        }
         var fresh = await busy.refreshContractByShortId(String(contractShortId));
         busy.showToast(ui, "Done. Your subscription will resume tomorrow.", "success");
 

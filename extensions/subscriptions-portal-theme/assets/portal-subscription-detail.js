@@ -402,17 +402,63 @@
       ])
     ]);
 
-    // Shipping card
+    // Shipping Address card
     var shippingAddressCard = ui.el("div", { class: "sp-card sp-detail__card" }, [
       sectionTitle(ui, "Shipping", "Update where your next order ships."),
       ui.el("div", { class: "sp-detail__actions" }, [
-        disabledBtn(ui, "Change shipping address"),
-        ui.el("a", {
-          class: "sp-btn sp-btn--ghost",
-          href: "https://account.superfoodscompany.com/orders",
-          target: "_blank",
-          rel: "noopener"
-        }, ["View recent orders"])
+        ui.el(
+          "button",
+          Object.assign(
+            {
+              type: "button",
+              class: "sp-btn" + (isReadOnly ? " sp-btn--disabled" : ""),
+              onclick: function () {
+                if (isReadOnly) return;
+
+                var act = window.__SP.actions && window.__SP.actions.changeShippingAddress;
+                if (!act) {
+                  try { console.warn("[Portal] changeShippingAddress action not loaded"); } catch (e) {}
+                  return;
+                }
+
+                act(
+                  ui,
+                  contract.id,
+                  {
+                    address1: "",
+                    address2: "",
+                    city: "",
+                    provinceCode: "",
+                    zip: ""
+                  },
+                  {
+                    methodType: "SHIPPING",
+                    countryCode: "US",
+                    country: "United States"
+                  }
+                ).then(function (r) {
+                  if (r && r.ok) {
+                    try { window.__SP.screens.subscriptionDetail.render(); } catch (e) {}
+                  }
+                });
+              }
+            },
+            // 🔑 ONLY add disabled attribute when read-only
+            isReadOnly ? { disabled: true } : {}
+          ),
+          ["Change shipping address"]
+        ),
+
+        ui.el(
+          "a",
+          {
+            class: "sp-btn sp-btn--ghost",
+            href: "https://account.superfoodscompany.com/orders",
+            target: "_blank",
+            rel: "noopener"
+          },
+          ["View recent orders"]
+        )
       ])
     ]);
 

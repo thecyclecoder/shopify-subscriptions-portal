@@ -9,6 +9,11 @@
     }
   }
 
+  function clearCaches() {
+    try { sessionStorage.removeItem(HOME_CACHE_KEY); } catch (e) {}
+    try { sessionStorage.removeItem(META_CACHE_KEY); } catch (e) {}
+  }
+
   function warn() {
     if (window.__SP && window.__SP.debug) {
       try { console.warn.apply(console, arguments); } catch (e) {}
@@ -103,11 +108,12 @@
     return entry.data || null;
   }
 
-  async function getHomeWithMeta(baseHome, params, opts) {
-  // Try cache first
-  var meta = getFreshMetaData();
+async function getHomeWithMeta(baseHome, params, opts) {
+  var force = !!(opts && opts.force);
 
-  // If no fresh meta, fetch it
+  // Respect force: skip meta cache
+  var meta = force ? null : getFreshMetaData();
+
   if (!meta) {
     try {
       meta = await fetchAndCache(params, opts, "contractsMeta");
@@ -117,11 +123,9 @@
     }
   }
 
-  // Merge meta into home response
   if (meta && meta.ok && Array.isArray(meta.contractsMeta)) {
     baseHome.contractsMeta = meta.contractsMeta;
-  } else if (meta && Array.isArray(meta)) {
-    // safety: if endpoint returns array directly
+  } else if (Array.isArray(meta)) {
     baseHome.contractsMeta = meta;
   } else {
     baseHome.contractsMeta = [];
@@ -130,14 +134,16 @@
   return baseHome;
 }
 
+
   // ---- core ---------------------------------------------------------------
 
   async function requestJson(route, params, opts) {
     opts = opts || {};
+    var force = !!opts.force; // NEW
     route = String(route || "").toLowerCase();
 
     // ---- HOME CACHE SHORT-CIRCUIT -----------------------------------------
-    if (route === "home") {
+    if (route === "home" && !force) {
       var cached = getHomeCache();
       if (cached && cached.data) {
         if (isCacheFresh(cached, HOME_CACHE_TTL_MS)) {
@@ -153,7 +159,7 @@
     }
 
     // ---- META CACHE SHORT-CIRCUIT -----------------------------------------
-    if (route === "contractsmeta") {
+    if (route === "contractsmeta" && !force) {
       var cachedM = getMetaCache();
       if (cachedM && cachedM.data) {
         if (isCacheFresh(cachedM, META_CACHE_TTL_MS)) {
@@ -260,7 +266,8 @@
 
     // NEW
     _getMetaCache: getMetaCache,
-    getFreshMetaData: getFreshMetaData
+    getFreshMetaData: getFreshMetaData,
+    clearCaches: clearCaches,
   };
 
   log("[Portal API] Loaded. window.__SP.api is ready.");

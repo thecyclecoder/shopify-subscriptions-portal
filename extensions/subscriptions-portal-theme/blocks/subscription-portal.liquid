@@ -21,6 +21,7 @@
   ]'
   {% if customer %}
     data-first-name="{{ customer.first_name | escape }}"
+    data-last-name="{{ customer.last_name | escape }}"
     data-email="{{ customer.email | escape }}"
   {% endif %}
 >

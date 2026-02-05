@@ -371,6 +371,7 @@
       .then(function () { return loadScript(base + "portal-actions-busy.js"); })
       .then(function () { return loadScript(base + "portal-actions-pause.js"); })
       .then(function () { return loadScript(base + "portal-actions-resume.js"); })
+      .then(function () { return loadScript(base + "portal-actions-change-shipping-address.js"); })
       .then(function () { return loadScript(base + "portal-home.js"); })
       .then(function () { return loadScript(base + "portal-subscriptions.js"); })
       .then(function () { return loadScript(base + "portal-subscription-detail.js"); })
