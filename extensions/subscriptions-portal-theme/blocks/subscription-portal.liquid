@@ -8,15 +8,57 @@
   data-selling-plan-week-4="{{ block.settings.selling_plan_week_4 }}"
   data-selling-plan-week-8="{{ block.settings.selling_plan_week_8 }}"
   data-selling-plan-week-2="{{ block.settings.selling_plan_week_2 }}"
-  data-shipping-protection-product="{{ block.settings.shipping_protection_product.id }}"
+  data-shipping-protection-variant-ids='[
+    {%- if block.settings.shipping_protection_product -%}
+      {%- for v in block.settings.shipping_protection_product.variants -%}
+        {%- if v.available -%}
+          {{- v.id | json -}}{% unless forloop.last %},{% endunless %}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+  ]'
+
   data-products-available-to-add='[
     {%- for p in block.settings.products_available_to_add -%}
-      {{- p.id | json -}}{% unless forloop.last %},{% endunless %}
+      {
+        "productId": {{ p.id | json }},
+        "title": {{ p.title | json }},
+        "variants": [
+          {%- assign has_variants = false -%}
+          {%- for v in p.variants -%}
+            {%- if v.available -%}
+              {%- if has_variants %},{% endif -%}
+              {
+                "id": {{ v.id | json }},
+                "title": {{ v.title | json }}
+              }
+              {%- assign has_variants = true -%}
+            {%- endif -%}
+          {%- endfor -%}
+        ]
+      }{% unless forloop.last %},{% endunless %}
     {%- endfor -%}
   ]'
+
   data-addons='[
     {%- for p in block.settings.addons -%}
-      {{- p.id | json -}}{% unless forloop.last %},{% endunless %}
+      {
+        "productId": {{ p.id | json }},
+        "title": {{ p.title | json }},
+        "variants": [
+          {%- assign has_variants = false -%}
+          {%- for v in p.variants -%}
+            {%- if v.available -%}
+              {%- if has_variants %},{% endif -%}
+              {
+                "id": {{ v.id | json }},
+                "title": {{ v.title | json }}
+              }
+              {%- assign has_variants = true -%}
+            {%- endif -%}
+          {%- endfor -%}
+        ]
+      }{% unless forloop.last %},{% endunless %}
     {%- endfor -%}
   ]'
   {% if customer %}

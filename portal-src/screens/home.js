@@ -1,3 +1,4 @@
+// assets/portal-home.js
 (function () {
   window.__SP = window.__SP || {};
   window.__SP.screens = window.__SP.screens || {};
@@ -22,17 +23,24 @@
     return "<div class='sp-card sp-wrap'>" + html + "</div>";
   }
 
-  function setRoot(html) {
+  function setRoot(htmlOrEl) {
     if (window.__SP.ui && typeof window.__SP.ui.setRoot === "function") {
-      window.__SP.ui.setRoot(html);
+      window.__SP.ui.setRoot(htmlOrEl);
       return;
     }
     var root = window.__SP.root;
-    if (root) root.innerHTML = html;
+    if (!root) return;
+
+    if (typeof htmlOrEl === "string") root.innerHTML = htmlOrEl;
+    else {
+      root.innerHTML = "";
+      root.appendChild(htmlOrEl);
+    }
   }
 
-  function getBasePrefix() {
-    return String(window.location.pathname || "").startsWith("/pages/") ? "/pages" : "";
+  function getPortalBase() {
+    var p = (window.__SP && window.__SP.portalPage) ? String(window.__SP.portalPage) : "/pages/portal";
+    return p.replace(/\/+$/, "");
   }
 
   function btn(href, text, variant) {
@@ -51,23 +59,8 @@
     if (!window.__SP.api || typeof window.__SP.api.requestJson !== "function") {
       throw new Error("API not loaded");
     }
-    return await window.__SP.api.requestJson("home");
-  }
-
-  function countSubscriptions(homeData) {
-    // Prefer meta-aware contracts via portal-utils if available
-    try {
-      var utils = window.__SP.utils;
-      if (utils && typeof utils.pickContracts === "function") {
-        var list = utils.pickContracts(homeData);
-        return Array.isArray(list) ? list.length : 0;
-      }
-    } catch (e) {}
-
-    // Fallback: summary.active_count if present
-    var summary = (homeData && homeData.summary) || {};
-    var activeCount = Number(summary.active_count || 0);
-    return isFinite(activeCount) ? activeCount : 0;
+    // Home is a lightweight health check now
+    return await window.__SP.api.requestJson("home", {}, { force: true });
   }
 
   function renderHome(data) {
@@ -81,35 +74,42 @@
       return;
     }
 
-    var basePrefix = getBasePrefix();
+    var base = getPortalBase();
+    var appName = data.appName ? String(data.appName) : "Subscription Portal";
 
-    var customer = data.customer || {};
-    var name = window.__SP.el && window.__SP.el.getAttribute
-      ? window.__SP.el.getAttribute("data-first-name")
-      : "";
-    var greeting = name ? "Welcome back, " + esc(name) : "Welcome back";
+    // Shopify Liquid already knows the customer name; we’ll read from the extension DOM if present.
+    var firstName = "";
+    try {
+      if (window.__SP.el && window.__SP.el.getAttribute) {
+        firstName = String(window.__SP.el.getAttribute("data-first-name") || "");
+      }
+    } catch (e) {}
 
-    var subCount = countSubscriptions(data);
+    var greeting = firstName ? ("Welcome back, " + esc(firstName)) : "Welcome back";
 
     var header =
       "<div class='sp-home-header'>" +
         "<div class='sp-home-header-left'>" +
           "<div class='sp-home-title'>" + greeting + "</div>" +
-          "<div class='sp-home-subtitle'>Let’s keep your results rolling.</div>" +
+          "<div class='sp-home-subtitle'>" + esc(appName) + "</div>" +
         "</div>" +
       "</div>";
 
-    var emailLine = customer.email
-      ? "<div class='sp-home-email'>Signed in as " + esc(customer.email) + "</div>"
-      : "";
-
-    // Single CTA
     var actions =
       "<div class='sp-home-actions'>" +
-        btn(basePrefix + "/portal/subscriptions?status=active", "View subscriptions", "primary") +
+        btn(base + "/subscriptions?status=active", "View subscriptions", "primary") +
       "</div>";
 
-    // Rewards card placeholder (drop widget into #sp-rewards-widget later)
+    var homeCard =
+      card(
+        header +
+        "<div class='sp-home-description'>" +
+          "Manage your upcoming orders, shipping details, and subscription status." +
+        "</div>" +
+        actions
+      );
+
+    // Optional: keep Rewards placeholder card (no API dependency)
     var rewardsCard =
       card(
         "<div class='sp-home-rewards'>" +
@@ -123,18 +123,6 @@
         "</div>"
       );
 
-    // Main home card
-    var homeCard =
-      card(
-        header +
-        emailLine +
-        "<div class='sp-home-description'>" +
-          "This is a secure subscription portal. Updates made here apply directly to your next shipment." +
-        "</div>" +
-        actions
-      );
-
-    // Stack cards
     setRoot(
       "<div class='sp-wrap sp-grid'>" +
         homeCard +
@@ -144,9 +132,7 @@
   }
 
   async function render() {
-    setRoot(
-      card("<div class='sp-loading'>Loading your portal…</div>")
-    );
+    setRoot(card("<div class='sp-loading'>Loading your portal…</div>"));
 
     try {
       var data = await fetchHome();

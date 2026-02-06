@@ -8,7 +8,9 @@
     "dev": "shopify app dev",
     "info": "shopify app info",
     "generate": "shopify app generate",
-    "deploy": "shopify app deploy"
+    "deploy": "shopify app deploy",
+    "portal:build": "esbuild portal-src/portal-entry.js --bundle --format=iife --platform=browser --target=es2018 --outfile=extensions/subscriptions-portal-theme/assets/portal.bundle.js --minify",
+    "portal:watch": "esbuild portal-src/portal-entry.js --bundle --format=iife --platform=browser --target=es2018 --outfile=extensions/subscriptions-portal-theme/assets/portal.bundle.js --sourcemap --watch"
   },
   "dependencies": {},
   "trustedDependencies": [
@@ -16,6 +18,9 @@
   ],
   "author": "admin",
   "private": true,
+  "devDependencies": {
+    "esbuild": "^0.20.2"
+  },
   "workspaces": [
     "extensions/*"
   ]

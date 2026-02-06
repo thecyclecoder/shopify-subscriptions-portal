@@ -1,5 +1,11 @@
+// assets/portal-router.js
 (function () {
   window.__SP = window.__SP || {};
+
+  function getPortalBase() {
+    var p = (window.__SP && window.__SP.portalPage) ? String(window.__SP.portalPage) : "/pages/portal";
+    return p.replace(/\/+$/, ""); // strip trailing slash
+  }
 
   function safeRender(screenKey) {
     var ui = window.__SP.ui;
@@ -28,17 +34,33 @@
   function start() {
     if (!window.__SP.root) return;
 
+    // Render on back/forward
     window.addEventListener("popstate", route);
 
+    // Render on SPA nav events emitted by subscriptions-portal.js
+    window.addEventListener("sp:locationchange", route);
+
+    // Intercept in-portal links (base-aware)
     document.addEventListener("click", function (e) {
       var a = e.target && e.target.closest ? e.target.closest("a") : null;
       if (!a) return;
 
       var href = a.getAttribute("href") || "";
-      if (!href.startsWith("/pages/portal")) return;
+      if (!href) return;
+
+      var base = getPortalBase();
+
+      // Only intercept links that navigate inside the portal base path
+      if (href.indexOf(base) !== 0) return;
 
       e.preventDefault();
-      window.history.pushState({}, "", href);
+      try {
+        window.history.pushState({}, "", href);
+      } catch (_) {
+        window.location.href = href;
+        return;
+      }
+
       route();
     });
 
@@ -46,17 +68,17 @@
   }
 
   function route() {
+    var base = getPortalBase();
     var path = String(window.location.pathname || "");
 
     // Normalize: strip trailing slash so "/pages/portal/" becomes "/pages/portal"
     path = path.replace(/\/+$/, "");
 
-    if (path === "/pages/portal") return safeRender("home");
-    if (path.indexOf("/pages/portal/subscriptions") === 0) return safeRender("subscriptions");
+    if (path === base) return safeRender("home");
+    if (path.indexOf(base + "/subscriptions") === 0) return safeRender("subscriptions");
 
-    // ✅ Detail page is always "/pages/portal/subscription?id=123"
-    // (querystring is not part of pathname, so we only match the base path)
-    if (path === "/pages/portal/subscription") return safeRender("subscriptionDetail");
+    // Detail page is always base + "/subscription" (querystring is ignored by pathname)
+    if (path === base + "/subscription") return safeRender("subscriptionDetail");
 
     if (window.__SP.ui) {
       window.__SP.ui.setRoot(

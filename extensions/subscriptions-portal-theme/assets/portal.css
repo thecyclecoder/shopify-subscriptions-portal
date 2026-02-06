@@ -1014,7 +1014,22 @@ button.sp-btn:disabled {
 .sp-btn--disabled {
   pointer-events: none;
 }
+/* Only used for Resume button on subscription detail */
+.sp-btn--full{
+  width: 100%;
+  display: block;
+}
+/* Full-width stacked buttons for Shipping section */
+.sp-detail__actions.sp-detail__actions--stack{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
 
+.sp-detail__actions.sp-detail__actions--stack .sp-btn{
+  width: 100%;
+  display: block;
+}
 .sp-detail__actions{
   display: grid;
   grid-template-columns: 1fr;
@@ -1437,7 +1452,7 @@ bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   padding: 15px 20px;
 
   border: 1px solid rgba(17, 24, 39, .12);
-  background: rgba(17, 24, 39, .8);
+  background: rgba(17, 24, 39, 1);
 
   box-shadow: 0 10px 26px rgba(17,24,39,.08);
   pointer-events: auto;
@@ -1458,13 +1473,13 @@ bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 
 .sp-toast--success{
   border: 1px solid rgba(22, 163, 74, .25);
-  background: rgba(22, 163, 74, .92);
+  background: rgba(22, 163, 74, 1);
     color: #ffffff;
 }
 
 .sp-toast--error{
   border: 1px solid rgba(239, 68, 68, .25);
-  background: rgba(239, 68, 68, .92);
+  background: rgba(239, 68, 68, 1);
   color: #ffffff;
 }
 
@@ -1491,4 +1506,51 @@ bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     Helvetica,
     Arial,
     sans-serif;
+}
+
+/* Shipping protection price display */
+.sp-shipprot__price { margin-top: 8px; }
+.sp-shipprot__price-stack { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.sp-shipprot__price-was { text-decoration: line-through; opacity: .7; font-weight: 700; }
+.sp-shipprot__price-now { font-weight: 900; }
+
+/* Toggle switch */
+.sp-switchwrap { display:flex; align-items:center; justify-content:flex-end; }
+.sp-switch { position:absolute; opacity:0; pointer-events:none; }
+
+.sp-switchlabel { display:inline-flex; cursor:pointer; }
+.sp-switchtrack {
+  width: 54px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--sp-border);
+  background: #f3f4f6;
+  position: relative;
+  transition: background .15s ease;
+}
+.sp-switchthumb{
+  position:absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background:#fff;
+  border: 1px solid rgba(17,24,39,.08);
+  box-shadow: 0 6px 14px rgba(17,24,39,.12);
+  transition: transform .15s ease;
+}
+
+/* Checked */
+.sp-switch:checked + .sp-switchlabel .sp-switchtrack{
+  background: rgba(22,163,74,.88);
+}
+.sp-switch:checked + .sp-switchlabel .sp-switchthumb{
+  transform: translateX(22px);
+}
+
+/* Disabled */
+.sp-switch:disabled + .sp-switchlabel{
+  opacity: .55;
+  cursor: not-allowed;
 }

@@ -22,7 +22,8 @@ extensions/*/dist
 # lock files
 
 
-
+extensions/subscriptions-portal-theme/assets/portal.bundle.js
+extensions/subscriptions-portal-theme/assets/portal.bundle.js.map
 
 # Ignore shopify files created during app dev
 .shopify/*
