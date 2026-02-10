@@ -18,6 +18,9 @@ import "./cards/addons.js";
 import "./cards/reviews.js";
 import "./cards/cancel.js";
 
+// Modals (registered onto window.__SP.modals)
+import "./modals/add-swap.js"
+
 // Actions (registered onto window.__SP.actions)
 import "./actions/busy.js";
 import "./actions/pause.js";

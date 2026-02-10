@@ -22,7 +22,30 @@
     {%- for p in block.settings.products_available_to_add -%}
       {
         "productId": {{ p.id | json }},
+        "handle": {{ p.handle | json }},
         "title": {{ p.title | json }},
+
+        "image": {
+          {%- if p.featured_image -%}
+            "src": {{ p.featured_image | image_url: width: 320 | json }},
+            "alt": {{ p.featured_image.alt | default: p.title | json }}
+          {%- else -%}
+            "src": "",
+            "alt": {{ p.title | json }}
+          {%- endif -%}
+        },
+
+        "metafields": {
+          "direct_response_headline": {{ p.metafields.custom.direct_response_headline.value | default: "" | json }},
+          "direct_response_subhead":  {{ p.metafields.custom.direct_response_subhead.value  | default: "" | json }}
+        },
+
+        "rating": {
+          "value": {{ p.metafields.reviews.rating.value.rating | default: 0 | json }},
+          "scale_max": {{ p.metafields.reviews.rating.value.scale_max | default: 5 | json }},
+          "count": {{ p.metafields.reviews.rating_count | default: 0 | plus: 10107 | times: 100.0  | money_without_currency | remove: '.00' | json }}
+        },
+
         "variants": [
           {%- assign has_variants = false -%}
           {%- for v in p.variants -%}
@@ -30,7 +53,20 @@
               {%- if has_variants %},{% endif -%}
               {
                 "id": {{ v.id | json }},
-                "title": {{ v.title | json }}
+                "title": {{ v.title | json }},
+
+                "image": {
+                  {%- if v.image -%}
+                    "src": {{ v.image | image_url: width: 240 | json }},
+                    "alt": {{ v.image.alt | default: p.title | json }}
+                  {%- elsif p.featured_image -%}
+                    "src": {{ p.featured_image | image_url: width: 240 | json }},
+                    "alt": {{ p.featured_image.alt | default: p.title | json }}
+                  {%- else -%}
+                    "src": "",
+                    "alt": {{ p.title | json }}
+                  {%- endif -%}
+                }
               }
               {%- assign has_variants = true -%}
             {%- endif -%}
@@ -67,7 +103,7 @@
     data-email="{{ customer.email | escape }}"
   {% endif %}
 >
-  {{ 'portal.css' | asset_url | stylesheet_tag }}
+  {{ 'portal.min.css' | asset_url | stylesheet_tag }}
 
   {% if block.settings.heading != blank %}
     <div class="app-title-wrapper">

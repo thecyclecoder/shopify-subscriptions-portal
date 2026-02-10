@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Home screen
+   ========================================================================== */
+
+.sp-home-shell {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* Header */
+.sp-home-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sp-home-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Title + subtitle */
+.sp-home-title {
+  font-size: 34px;
+  line-height: 1.12;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.sp-home-subtitle {
+  font-size: 19px;
+  color: var(--sp-muted);
+  font-weight: 650;
+  margin-top: 6px;
+}
+
+/* Meta text (email, helper copy) */
+.sp-home-email {
+  margin-top: 10px;
+  font-size: 15px;
+  color: #9ca3af;
+  font-weight: 650;
+}
+
+.sp-home-body {
+  margin-top: 14px;
+  font-size: 17px;
+  color: #374151;
+  font-weight: 650;
+}
+
+/* CTA buttons */
+.sp-home-actions {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Desktop: buttons side-by-side, constrained width */
+@media (min-width: 900px) {
+  .sp-home-actions {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+
+  .sp-home-actions .sp-btn {
+    flex: 0 1 320px;
+    width: 320px;
+  }
+}
+
+/* Desktop: slightly tighter buttons */
+@media (min-width: 900px) {
+  .sp-home-actions .sp-btn {
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+}
+
+/* Mobile tightening */
+@media (max-width: 520px) {
+  .sp-home-title {
+    font-size: 30px;
+  }
+
+  .sp-home-subtitle {
+    font-size: 17px;
+  }
+}
