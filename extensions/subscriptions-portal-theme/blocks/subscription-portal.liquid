@@ -70,9 +70,11 @@
   {{ 'portal.css' | asset_url | stylesheet_tag }}
 
   {% if block.settings.heading != blank %}
-    <h2 class="sp-page-title">{{ block.settings.heading }}</h2>
-    <div class="sp-page-subhead">
-      <span class="sp-pill sp-pill--secure">🔒 Secure portal</span>
+    <div class="app-title-wrapper">
+      <h2 class="sp-page-title">{{ block.settings.heading }}</h2>
+      <div class="sp-page-subhead">
+        <span class="sp-pill sp-pill--secure">🔒 Secure</span>
+      </div>
     </div>
   {% endif %}
 

@@ -24,6 +24,8 @@ import "./actions/pause.js";
 import "./actions/resume.js";
 import "./actions/change-shipping-address.js";
 import "./actions/toggle-shipping-protection.js";
+import "./actions/coupon.js";
+import "./actions/frequency.js";
 
 // Screens (registered onto window.__SP.screens)
 import "./screens/home.js";

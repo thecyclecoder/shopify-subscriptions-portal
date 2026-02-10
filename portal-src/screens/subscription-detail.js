@@ -428,15 +428,15 @@ var cardCtx = Object.assign(
     var grid = ui.el("div", { class: "sp-grid sp-detail__grid" }, [
       ui.el("div", { class: "sp-detail__col" }, [
         pauseCardEl,
-        addressCardEl,
-        shipProtCardEl,
+        itemsCardEl,
+        frequencyCardEl,
         couponCardEl,
         rewardsCardEl,
       ].filter(Boolean)),
       ui.el("div", { class: "sp-detail__col" }, [
-        frequencyCardEl,
-        itemsCardEl,
         addonsCardEl,
+        addressCardEl,
+        shipProtCardEl,
         reviewsCardEl,
         cancelCardEl,
       ].filter(Boolean)),

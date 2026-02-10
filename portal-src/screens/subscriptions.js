@@ -302,7 +302,7 @@
     wireTabClicks(tabs);
 
     var headerCard = ui.el("div", { class: "sp-card sp-subs-header" }, [
-      ui.el("h2", { class: "sp-title" }, ["Your subscriptions"]),
+      // ui.el("h2", { class: "sp-title" }, ["Your subscriptions"]),
       ui.el("div", { class: "sp-subs-header__tabs" }, [tabs])
     ]);
 

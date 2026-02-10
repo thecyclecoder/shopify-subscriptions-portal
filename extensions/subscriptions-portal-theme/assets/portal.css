@@ -32,15 +32,107 @@
 }
 
 /* Portal page heading + secure pill line */
+.app-title-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 20px 0px;
+}
 .sp-page-title{
   text-align:center;
-  margin-bottom:10px;
+  margin: 0px;
+  line-height: 1;
 }
 
 .sp-page-subhead{
   display:flex;
   justify-content:center;
-  margin-bottom:18px;
+  margin-bottom:0;
+}
+
+/* ------------------------------------------------------------------
+   Portal Breadcrumb
+------------------------------------------------------------------ */
+
+.sp-bc__wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 0px 14px;
+}
+
+.sp-bc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Links */
+.sp-bc__a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827; /* near-black */
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sp-bc__a:hover {
+  text-decoration: underline;
+}
+
+/* Disabled / current crumb */
+.sp-bc__disabled,
+.sp-bc__cur {
+  color: #6b7280; /* gray-500 */
+  font-weight: 700;
+  font-size: 14px;
+  cursor: default;
+}
+
+/* Separators */
+.sp-bc__sep {
+  color: #9ca3af; /* gray-400 */
+  font-weight: 700;
+  user-select: none;
+}
+
+/* Profile icon wrapper */
+.sp-bc__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #f3f4f6; /* gray-100 */
+  color: #111827;
+}
+
+/* Optional: tighten spacing on mobile */
+@media (max-width: 640px) {
+  .sp-bc {
+    gap: 6px;
+  }
+
+  .sp-bc__a,
+  .sp-bc__disabled,
+  .sp-bc__cur {
+    font-size: 13px;
+  }
+}
+
+/* Ensure breadcrumb svg actually paints (some themes set svg/path fill:none globally) */
+.sp-bc__icon-svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.sp-bc__icon-svg path {
+  fill: #111827 !important;
 }
 
 /* Slightly more breathing room on mobile */
@@ -1553,4 +1645,25 @@ bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 .sp-switch:disabled + .sp-switchlabel{
   opacity: .55;
   cursor: not-allowed;
+}
+
+/* Shipping protection price row */
+.sp-shipprot__priceRow { margin-top: 6px; }
+.sp-shipprot__strike { text-decoration: line-through; margin-right: 8px; }
+
+.sp-detail__freq-value {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.sp-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+  font-size: 17px;
+}
+
+label.sp-radio-row span {
+    padding-left: 6px;
 }

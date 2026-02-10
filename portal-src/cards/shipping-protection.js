@@ -3,88 +3,14 @@
   window.__SP = window.__SP || {};
   window.__SP.cards = window.__SP.cards || {};
 
-  // Card: Shipping Protection
-  // - Detects presence by line item title "shipping protection" OR utils.isShippingProtectionLine
-  // - Toggle uses actions.shippingProtection.toggle(ui, contractGid, nextOn)
-  // - "On" shows actual line price (best-effort)
-  // - "Off" shows $5.00 struck-through + $3.75 (25% off)
-  // - If not configured (no data-shipping-protection-variant-ids), shows hint + disables toggle
-  //
-  // IMPORTANT:
-  // - Legacy shipping protection variant may be present in contract lines.
-  // - "Toggling ON" uses the allowed variant id from the root div attribute.
-  // - This file does NOT mutate the subscription; it delegates to the action.
-
   function getRoot() {
     return document.querySelector(".subscriptions-portal");
-  }
-
-  function toNum(v, fallback) {
-    var n = Number(v);
-    return isFinite(n) ? n : (fallback == null ? 0 : fallback);
   }
 
   function fmtMoney(n) {
     var x = Number(n);
     if (!isFinite(x)) return "";
     return "$" + x.toFixed(2);
-  }
-
-  // Best-effort parse price from a line item.
-  // Returns number in dollars if found, otherwise NaN.
-  function pickLinePriceDollars(ln) {
-    if (!ln) return NaN;
-
-    function unwrapAmount(x) {
-      if (x == null) return null;
-      if (typeof x === "object") {
-        if (x.amount != null) return x.amount;
-        if (x.value != null) return x.value;
-      }
-      return x;
-    }
-
-    // Common candidates (Appstle/Shopify shapes vary)
-    var candidates = [
-      // Often: { amount: { amount: "5.00", currencyCode: "USD" } }
-      ln && ln.lineDiscountedPrice && ln.lineDiscountedPrice.amount && ln.lineDiscountedPrice.amount.amount,
-      ln && ln.lineDiscountedPrice && ln.lineDiscountedPrice.amount,
-      ln && ln.currentPrice && ln.currentPrice.amount && ln.currentPrice.amount.amount,
-      ln && ln.currentPrice && ln.currentPrice.amount,
-      ln && ln.price && ln.price.amount && ln.price.amount.amount,
-      ln && ln.price && ln.price.amount,
-      ln && ln.discountedPrice && ln.discountedPrice.amount && ln.discountedPrice.amount.amount,
-      ln && ln.discountedPrice && ln.discountedPrice.amount,
-      // Sometimes directly a number/string
-      ln && ln.linePrice,
-      ln && ln.amount,
-      ln && ln.price,
-    ];
-
-    for (var i = 0; i < candidates.length; i++) {
-      var v = unwrapAmount(candidates[i]);
-      if (v == null) continue;
-
-      var s = String(v).trim();
-      if (!s) continue;
-
-      // If it contains a decimal, treat as dollars
-      if (s.indexOf(".") >= 0) {
-        var dollars = Number(s);
-        if (isFinite(dollars)) return dollars;
-        continue;
-      }
-
-      // Otherwise might be cents — but we can't be 100% sure.
-      // Heuristic: integers >= 50 are likely cents (e.g. 500 => $5.00)
-      var n = Number(s);
-      if (!isFinite(n)) continue;
-      if (n >= 50) return n / 100;
-      // If small integer (e.g. 5), assume dollars
-      return n;
-    }
-
-    return NaN;
   }
 
   function lineTitleLower(ln, utils) {
@@ -112,22 +38,74 @@
     }
   }
 
+  // Best-effort parse price from a line item (returns dollars)
+  function pickLinePriceDollars(ln) {
+    if (!ln) return NaN;
+
+    function unwrapAmount(x) {
+      if (x == null) return null;
+      if (typeof x === "object") {
+        if (x.amount != null) return x.amount;
+        if (x.value != null) return x.value;
+      }
+      return x;
+    }
+
+    var candidates = [
+      ln && ln.lineDiscountedPrice && ln.lineDiscountedPrice.amount && ln.lineDiscountedPrice.amount.amount,
+      ln && ln.lineDiscountedPrice && ln.lineDiscountedPrice.amount,
+      ln && ln.currentPrice && ln.currentPrice.amount && ln.currentPrice.amount.amount,
+      ln && ln.currentPrice && ln.currentPrice.amount,
+      ln && ln.price && ln.price.amount && ln.price.amount.amount,
+      ln && ln.price && ln.price.amount,
+      ln && ln.discountedPrice && ln.discountedPrice.amount && ln.discountedPrice.amount.amount,
+      ln && ln.discountedPrice && ln.discountedPrice.amount,
+      ln && ln.linePrice,
+      ln && ln.amount,
+      ln && ln.price,
+    ];
+
+    for (var i = 0; i < candidates.length; i++) {
+      var v = unwrapAmount(candidates[i]);
+      if (v == null) continue;
+
+      var s = String(v).trim();
+      if (!s) continue;
+
+      if (s.indexOf(".") >= 0) {
+        var dollars = Number(s);
+        if (isFinite(dollars)) return dollars;
+        continue;
+      }
+
+      var n = Number(s);
+      if (!isFinite(n)) continue;
+
+      // heuristic cents
+      if (n >= 50) return n / 100;
+
+      // small integer -> assume dollars
+      return n;
+    }
+
+    return NaN;
+  }
+
   function findShipProtectionLine(contract, utils) {
     var linesAll = (contract && Array.isArray(contract.lines)) ? contract.lines : [];
     var found = null;
 
+    // Requirement #1: title match (case-insensitive)
     for (var i = 0; i < linesAll.length; i++) {
       var ln = linesAll[i];
       if (!ln) continue;
-
-      // Requirement #1: title == "shipping protection" (case-insensitive)
       if (lineTitleLower(ln, utils) === "shipping protection") {
         found = ln;
         break;
       }
     }
 
-    // Fallback: use utils detector (legacy titles, etc.)
+    // Fallback: utils detector
     if (!found && utils && typeof utils.isShippingProtectionLine === "function") {
       for (var j = 0; j < linesAll.length; j++) {
         var ln2 = linesAll[j];
@@ -151,7 +129,28 @@
     ]);
   }
 
-  // Public renderer
+  function getActionFn(actions) {
+    // Preferred: actions.shippingProtection.toggle
+    try {
+      if (actions && actions.shippingProtection && typeof actions.shippingProtection.toggle === "function") {
+        return actions.shippingProtection.toggle;
+      }
+    } catch (e) {}
+
+    return null;
+  }
+
+  function rerenderDetailScreen() {
+    try {
+      if (window.__SP &&
+          window.__SP.screens &&
+          window.__SP.screens.subscriptionDetail &&
+          typeof window.__SP.screens.subscriptionDetail.render === "function") {
+        window.__SP.screens.subscriptionDetail.render();
+      }
+    } catch (e) {}
+  }
+
   // usage:
   // window.__SP.cards.shippingProtection.render(ui, { contract, utils, actions, isReadOnly, bucket })
   window.__SP.cards.shippingProtection = {
@@ -166,21 +165,13 @@
       var shipProtLine = findShipProtectionLine(contract, utils);
       var shipHas = !!shipProtLine;
 
-      // Determine "configured": needs at least one allowed variant id from root attr
       var allowed = getAllowedShipProtVariantIdsFromRoot();
       var isConfigured = allowed.length > 0;
 
-      // Action existence
-      var hasAction =
-        actions &&
-        actions.shippingProtection &&
-        typeof actions.shippingProtection.toggle === "function";
+      var actionFn = getActionFn(actions);
+      var hasAction = typeof actionFn === "function";
 
-      // Enable toggle rules
-      // - not read-only
-      // - action exists
-      // - configured
-      // - not cancelled (can't edit)
+      // Enable rules
       var canToggle = !isReadOnly && hasAction && isConfigured && (bucket !== "cancelled");
 
       // Pricing
@@ -191,60 +182,75 @@
       var discPrice = listPrice * 0.75;
 
       var priceRow = shipHas
-        ? ui.el("div", { class: "sp-muted", style: "margin-top:6px;" }, [
+        ? ui.el("div", { class: "sp-muted sp-shipprot__priceRow" }, [
             ui.el("span", {}, ["Price: "]),
             ui.el("strong", {}, [onPriceText]),
           ])
-        : ui.el("div", { class: "sp-muted", style: "margin-top:6px;" }, [
+        : ui.el("div", { class: "sp-muted sp-shipprot__priceRow" }, [
             ui.el("span", {}, ["Price: "]),
-            ui.el("span", { style: "text-decoration:line-through; margin-right:8px;" }, [fmtMoney(listPrice)]),
-            ui.el("strong", {}, [fmtMoney(discPrice)]),
+            ui.el("span", { class: "sp-shipprot__strike" }, [fmtMoney(listPrice)]),
+            ui.el("strong", { class: "sp-shipprot__now" }, [fmtMoney(discPrice)]),
           ]);
 
-      // Toggle element
-      // NOTE: ui.el("input", attrs, []) is used elsewhere; we follow that.
-      var toggleAttrs = { class: "sp-switch", type: "checkbox" };
-      if (shipHas) toggleAttrs.checked = true;
-      if (!canToggle) toggleAttrs.disabled = true;
+      // Toggle markup that matches your CSS (input is hidden, label shows track/thumb)
+      var toggleId = "sp_shipprot_" + String(contract && contract.id ? contract.id : "x");
 
-      var toggleEl = ui.el("input", toggleAttrs, []);
+      var inputAttrs = { class: "sp-switch", type: "checkbox", id: toggleId };
+      if (shipHas) inputAttrs.checked = true;
+      if (!canToggle) inputAttrs.disabled = true;
 
-      // Wire change handler (only if canToggle)
+      var inputEl = ui.el("input", inputAttrs, []);
+
+      var labelAttrs = { class: "sp-switchlabel", for: toggleId };
+      if (!canToggle) labelAttrs["aria-disabled"] = "true";
+
+      var labelEl = ui.el("label", labelAttrs, [
+        ui.el("span", { class: "sp-switchtrack" }, [
+          ui.el("span", { class: "sp-switchthumb" }, []),
+        ]),
+      ]);
+
+      // Wire handler if enabled
       if (canToggle) {
-        toggleEl.addEventListener("change", function () {
+        inputEl.addEventListener("change", function () {
           try {
-            if (toggleEl.disabled) return;
+            if (inputEl.disabled) return;
           } catch (e) {}
 
-          var nextOn = !!toggleEl.checked;
+          var nextOn = !!inputEl.checked;
 
-          // Lock immediately to prevent double toggle spam
-          try { toggleEl.disabled = true; } catch (e) {}
+          // lock immediately
+          try { inputEl.disabled = true; } catch (e2) {}
 
-          actions.shippingProtection
-            .toggle(ui, contract.id, nextOn)
+          // Call action in a compatible way
+          // - If action expects (ui, contractGid, nextOn): great
+          // - If action expects (ui, contractGid, nextOn, opts): also supported
+          //   (we pass the "new" variant id as a hint if the action wants it)
+          var opts = { shippingProtectionVariantId: (allowed.length ? allowed[0] : 0) };
+
+          Promise.resolve()
             .then(function () {
-              // Re-render screen after server patch/caches are handled by action
+              if (!actionFn) throw new Error("missing_action");
               try {
-                if (window.__SP.screens && window.__SP.screens.subscriptionDetail && typeof window.__SP.screens.subscriptionDetail.render === "function") {
-                  window.__SP.screens.subscriptionDetail.render();
-                }
-              } catch (e) {}
+                if (actionFn.length >= 4) return actionFn(ui, contract.id, nextOn, opts);
+              } catch (_) {}
+              return actionFn(ui, contract.id, nextOn);
+            })
+            .then(function () {
+              rerenderDetailScreen();
             })
             .catch(function () {
-              // Revert checkbox on failure
-              try { toggleEl.checked = !nextOn; } catch (e) {}
-              try {
-                if (window.__SP.screens && window.__SP.screens.subscriptionDetail && typeof window.__SP.screens.subscriptionDetail.render === "function") {
-                  window.__SP.screens.subscriptionDetail.render();
-                }
-              } catch (e2) {}
+              // revert UI
+              try { inputEl.checked = !nextOn; } catch (e3) {}
+              rerenderDetailScreen();
             });
         });
       }
 
+      // Hint messaging
       var hintText = "";
       if (!isConfigured) hintText = "Shipping protection is not configured.";
+      else if (!hasAction) hintText = "Shipping protection toggle is not loaded. Please refresh.";
       else if (isReadOnly) hintText = "Actions will unlock when available.";
       else if (bucket === "cancelled") hintText = "This subscription can’t be edited right now.";
       else hintText = "Toggle to add or remove shipping protection for your next order.";
@@ -256,10 +262,13 @@
         ui.el("div", { class: "sp-detail__shiprow" }, [
           ui.el("div", { class: "sp-detail__shipmeta" }, [
             ui.el("div", { class: "sp-detail__shipstate" }, [shipHas ? "Currently on" : "Currently off"]),
-            ui.el("p", { class: "sp-muted sp-detail__shipsub" }, ["Protects against loss, theft, and damage in transit."]),
+            ui.el("p", { class: "sp-muted sp-detail__shipsub" }, ["85% of customers choose this."]),
             priceRow,
           ]),
-          ui.el("div", { class: "sp-switchwrap" }, [toggleEl]),
+          ui.el("div", { class: "sp-switchwrap" }, [
+            inputEl,
+            labelEl,
+          ]),
         ]),
         hintEl,
       ]);
