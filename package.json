@@ -10,11 +10,11 @@
     "generate": "shopify app generate",
     "deploy": "shopify app deploy",
 
-    "portal:build": "esbuild portal-src/js/portal-entry.js --bundle --format=iife --platform=browser --target=es2018 --outfile=extensions/subscriptions-portal-theme/assets/portal.bundle.js --minify",
+    "portal:build": "esbuild portal-src/js/portal-entry.js --bundle --format=iife --platform=browser --target=es2018 --outfile=extensions/subscriptions-portal-theme/assets/portal.bundle.js --minify --sourcemap",
     "portal:watch": "esbuild portal-src/js/portal-entry.js --bundle --format=iife --platform=browser --target=es2018 --outfile=extensions/subscriptions-portal-theme/assets/portal.bundle.js --sourcemap --watch",
 
-    "build:css": "sass portal-src/styles/portal.scss extensions/subscriptions-portal-theme/assets/portal.min.css --style=compressed --no-source-map",
-    "watch:css": "sass portal-src/styles/portal.scss extensions/subscriptions-portal-theme/assets/portal.min.css --style=expanded --watch",
+    "build:css": "sass portal-src/styles/portal.scss extensions/subscriptions-portal-theme/assets/portal.min.css --style=compressed --source-map",
+    "watch:css": "sass portal-src/styles/portal.scss extensions/subscriptions-portal-theme/assets/portal.min.css --style=expanded --source-map --watch",
 
     "portal:build:all": "npm run portal:build && npm run build:css",
     "portal:deploy": "npm run portal:build:all && shopify app deploy"

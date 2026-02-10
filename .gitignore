@@ -24,6 +24,8 @@ extensions/*/dist
 
 extensions/subscriptions-portal-theme/assets/portal.bundle.js
 extensions/subscriptions-portal-theme/assets/portal.bundle.js.map
+extensions/subscriptions-portal-theme/assets/portal.min.css
+extensions/subscriptions-portal-theme/assets/portal.min.css.map
 
 # Ignore shopify files created during app dev
 .shopify/*
