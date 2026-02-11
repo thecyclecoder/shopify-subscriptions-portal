@@ -20,6 +20,8 @@ import "./cards/cancel.js";
 
 // Modals (registered onto window.__SP.modals)
 import "./modals/add-swap.js"
+import "./modals/remove.js"
+import "./modals/quantity.js"
 
 // Actions (registered onto window.__SP.actions)
 import "./actions/busy.js";
@@ -29,9 +31,13 @@ import "./actions/change-shipping-address.js";
 import "./actions/toggle-shipping-protection.js";
 import "./actions/coupon.js";
 import "./actions/frequency.js";
+import "./actions/add-swap.js";
+import "./actions/remove.js";
+import "./actions/quantity.js";
 
 // Screens (registered onto window.__SP.screens)
 import "./screens/home.js";
 import "./screens/subscriptions.js";
 import "./screens/subscription-detail.js";
+import "./screens/cancel.js";
 import "./screens/router.js";

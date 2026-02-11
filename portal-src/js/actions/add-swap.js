@@ -1,26 +1,25 @@
-// /actions/toggle-shipping-protection.js
+// /actions/add-swap.js
 (function () {
   window.__SP = window.__SP || {};
   window.__SP.actions = window.__SP.actions || {};
-  window.__SP.actions.shippingProtection = window.__SP.actions.shippingProtection || {};
+  window.__SP.actions.items = window.__SP.actions.items || {};
 
   // -----------------------------------------------------------------------------
-  // Shipping Protection toggle (cache-first like pause.js)
+  // Add + Swap (cache-first, patch-driven, same replaceVariants Vercel route)
   //
   // Flow:
   // 1) Read contract from __sp_subscriptions_cache_v2 (sessionStorage)
-  // 2) Build replaceVariants payload using existing ship-prot line detection
+  // 2) Build replaceVariants payload:
+  //    - swap: oldLineId = line.id, newVariants = { [variantId]: qty }
+  //    - add : newVariants = { [variantId]: qty }
   // 3) POST route=replaceVariants
   // 4) Expect resp.patch with { lines, deliveryPrice?, updatedAt? }
   // 5) Patch cached contract + refresh TTL
-  // 6) Re-render current screen
-  //
-  // IMPORTANT FIX:
-  // - Preserve original contract.lines shape (Connection w/ .nodes vs array)
-  //   so screens/cards that expect contract.lines.nodes don't break after patch.
+  // 6) Sync in-memory state + re-render
   // -----------------------------------------------------------------------------
 
   var SUBS_CACHE_KEY = "__sp_subscriptions_cache_v2";
+  var __inFlight = false;
 
   function shortId(gid) {
     var s = String(gid || "");
@@ -38,7 +37,12 @@
     return isFinite(n) ? n : fallback == null ? 0 : fallback;
   }
 
-  // ---- cache helpers (mirrors pause.js pattern) ----------------------------
+  function toInt(v, fallback) {
+    var n = Number(v);
+    return Number.isFinite(n) ? Math.trunc(n) : (fallback == null ? 0 : fallback);
+  }
+
+  // ---- cache helpers (mirrors toggle-shipping-protection.js pattern) --------
 
   function looksLikeSubsCacheEntry(entry) {
     if (!entry || typeof entry !== "object") return false;
@@ -108,7 +112,7 @@
     }
   }
 
-  // ---- shape-safe patching -------------------------------------------------
+  // ---- shape-safe patching (same as toggle-shipping-protection.js) ----------
 
   function isLinesConnectionShape(lines) {
     try {
@@ -119,25 +123,19 @@
   }
 
   function applyLinesPatchPreserveShape(baseLines, patchLinesArray) {
-    // patchLinesArray should be an array of SubscriptionLine
     var patchArr = Array.isArray(patchLinesArray) ? patchLinesArray : null;
     if (!patchArr) return baseLines;
 
-    // If base is already an array, keep it an array
     if (Array.isArray(baseLines)) return patchArr;
 
-    // If base is a connection with nodes, preserve it and swap nodes
     if (isLinesConnectionShape(baseLines)) {
       var nextConn = {};
       for (var k in baseLines) nextConn[k] = baseLines[k];
       nextConn.nodes = patchArr;
-
-      // Keep __typename stable if missing
       if (!nextConn.__typename) nextConn.__typename = "SubscriptionLineConnection";
       return nextConn;
     }
 
-    // If base is missing or unknown shape, create a safe connection object
     return {
       __typename: "SubscriptionLineConnection",
       nodes: patchArr,
@@ -155,11 +153,9 @@
     var base = contract && typeof contract === "object" ? contract : {};
     var p = patch && typeof patch === "object" ? patch : {};
 
-    // shallow clone
     var next = {};
     for (var k in base) next[k] = base[k];
 
-    // IMPORTANT: preserve lines shape (connection vs array)
     if (p.lines) {
       next.lines = applyLinesPatchPreserveShape(base.lines, p.lines);
     }
@@ -167,11 +163,8 @@
     if (p.deliveryPrice) next.deliveryPrice = p.deliveryPrice;
     if (p.updatedAt) next.updatedAt = p.updatedAt;
 
-    // touch updatedAt if missing
     if (!next.updatedAt) {
-      try {
-        next.updatedAt = new Date().toISOString();
-      } catch (e) {}
+      try { next.updatedAt = new Date().toISOString(); } catch (e) {}
     }
 
     return next;
@@ -200,107 +193,7 @@
     }
   }
 
-  // ---- contract helpers ----------------------------------------------------
-
-  function getContractLines(contract) {
-    try {
-      if (contract && Array.isArray(contract.lines)) return contract.lines;
-    } catch (e) {}
-    try {
-      if (contract && contract.lines && Array.isArray(contract.lines.nodes)) return contract.lines.nodes;
-    } catch (e2) {}
-    return [];
-  }
-
-  function isShipProtLine(ln) {
-    try {
-      var t = ln && ln.title ? String(ln.title) : "";
-      var tl = t.trim().toLowerCase();
-      if (tl === "shipping protection") return true;
-      if (tl.indexOf("shipping protection") >= 0) return true;
-    } catch (e) {}
-
-    try {
-      if (window.__SP.utils && typeof window.__SP.utils.isShippingProtectionLine === "function") {
-        return !!window.__SP.utils.isShippingProtectionLine(ln);
-      }
-    } catch (e2) {}
-
-    return false;
-  }
-
-  function countNonShipProtLines(contract) {
-    var n = 0;
-    var lines = getContractLines(contract);
-    for (var i = 0; i < lines.length; i++) {
-      var ln = lines[i];
-      if (!ln) continue;
-      if (isShipProtLine(ln)) continue;
-      n++;
-    }
-    return n;
-  }
-
-  function findExistingShipProt(contract) {
-    var vids = [];
-    var lineIds = [];
-
-    var lines = getContractLines(contract);
-    for (var i = 0; i < lines.length; i++) {
-      var ln = lines[i];
-      if (!ln) continue;
-      if (!isShipProtLine(ln)) continue;
-
-      try {
-        if (ln.id) lineIds.push(String(ln.id));
-      } catch (e) {}
-
-      try {
-        // ln.variantId may be gid or numeric-like string
-        var vid = toNum(shortId(ln.variantId), 0);
-        if (vid > 0) vids.push(vid);
-      } catch (e2) {}
-    }
-
-    // unique
-    try {
-      vids = Array.from(new Set(vids));
-    } catch (_) {}
-    try {
-      lineIds = Array.from(new Set(lineIds));
-    } catch (_) {}
-
-    return { variantIds: vids, lineIds: lineIds };
-  }
-
-  // ---- config helpers (optional shop + required variant id for ON) ---------
-
-  function getRoot() {
-    return document.querySelector(".subscriptions-portal");
-  }
-
-  function pickShipProtVariantIdFromMeta(meta) {
-    // primary: meta.shippingProtectionVariantId
-    try {
-      var id = toNum(meta && meta.shippingProtectionVariantId, 0);
-      if (id > 0) return id;
-    } catch (e) {}
-
-    // fallback: root attributes (single-variant legacy)
-    try {
-      var root = getRoot();
-      var raw =
-        (root && root.getAttribute("data-shipping-protection-variant-id")) ||
-        (root && root.getAttribute("data-ship-protection-variant-id")) ||
-        (root && root.getAttribute("data-shipping-protection-variant")) ||
-        (root && root.getAttribute("data-ship-protection-variant")) ||
-        "";
-      var n = toNum(String(raw).trim(), 0);
-      return n > 0 ? n : 0;
-    } catch (e2) {}
-
-    return 0;
-  }
+  // ---- screen refresh helpers ----------------------------------------------
 
   function getCurrentRouteName() {
     try {
@@ -339,7 +232,6 @@
   }
 
   function refreshCurrentScreen(contractGid) {
-    // 1) Emit a generic event (lets screens/cards respond without tight coupling)
     try {
       window.dispatchEvent(
         new CustomEvent("__sp:contract-updated", {
@@ -348,7 +240,6 @@
       );
     } catch (e) {}
 
-    // 2) If you have a central renderer, prefer it
     try {
       if (window.__SP && typeof window.__SP.renderCurrentScreen === "function") {
         window.__SP.renderCurrentScreen();
@@ -356,7 +247,6 @@
       }
     } catch (e0) {}
 
-    // 3) Route-based render (more reliable than “guessing”)
     var route = getCurrentRouteName();
 
     try {
@@ -383,7 +273,6 @@
       }
     } catch (e1) {}
 
-    // 4) Fallbacks (original behavior)
     try {
       if (
         window.__SP &&
@@ -409,12 +298,12 @@
     } catch (e3) {}
   }
 
-  var __inFlight = false;
+  // ---- main submitter -------------------------------------------------------
 
-  // Main implementation (internal)
-  async function toggleShippingProtectionImpl(ui, contractGid, nextOn, meta) {
+  async function submitAddSwapImpl(ui, payload) {
     var busy = window.__SP.actions && window.__SP.actions.busy;
     if (!busy) throw new Error("busy_not_loaded");
+    if (!window.__SP.api || typeof window.__SP.api.postJson !== "function") throw new Error("api_not_loaded");
     if (__inFlight) return { ok: false, error: "busy" };
 
     __inFlight = true;
@@ -424,63 +313,49 @@
         ui,
         async function () {
           try {
-            var contractShortId = toNum(shortId(contractGid), 0);
-            if (!contractShortId) throw new Error("missing_contractId");
+            var mode = (toStr(payload && payload.mode).toLowerCase() === "swap") ? "swap" : "add";
+            var contractGid = toStr(payload && payload.contractId);
+            if (!contractGid) throw new Error("missing_contractId");
 
-            // Read contract from cache (like pause.js)
+            var contractShortId = toNum(shortId(contractGid), 0);
+            if (!contractShortId) throw new Error("missing_contractId_short");
+
+            var variantIdRaw = toStr(payload && payload.variantId);
+            var variantShortId = toNum(shortId(variantIdRaw), 0);
+            if (!variantShortId) throw new Error("missing_variantId");
+
+            var qty = toInt(payload && payload.quantity, 0);
+            if (!(qty > 0)) throw new Error("missing_quantity");
+
+            // Read contract from cache (cache-first)
             var contract = getContractFromCacheByGid(contractGid);
             if (!contract) throw new Error("cache_missing_contract");
 
-            // Guardrail: can’t add ship prot if there are no regular items
-            var nonSpCount = countNonShipProtLines(contract);
-            if (nextOn && nonSpCount < 1) {
-              throw new Error("cannot_add_shipping_protection_to_empty_subscription");
-            }
+            // Build replaceVariants payload
+            var newVariants = {};
+            newVariants[String(variantShortId)] = qty;
 
-            // Variant id required when turning ON
-            var shipProtVariantId = pickShipProtVariantIdFromMeta(meta);
-            if (nextOn && !shipProtVariantId) throw new Error("missing_shipping_protection_variant_id");
-
-            var existing = findExistingShipProt(contract);
-
-            var useOldLineId = existing.lineIds && existing.lineIds.length === 1 ? existing.lineIds[0] : "";
-            var removeVariantIds = existing.variantIds || [];
-
-            var newVariants = undefined;
-            if (nextOn) {
-              newVariants = {};
-              newVariants[String(shipProtVariantId)] = 1; // qty hard 1
-            }
-
-            var payload = {
+            var req = {
               contractId: contractShortId,
-
-              oldLineId: useOldLineId || undefined,
-              oldVariants: useOldLineId ? undefined : removeVariantIds.length ? removeVariantIds : undefined,
-
               newVariants: newVariants,
 
               eventSource: "CUSTOMER_PORTAL",
               stopSwapEmails: true,
               carryForwardDiscount: "PRODUCT_THEN_EXISTING",
-
-              // IMPORTANT: Vercel guardrail requires explicit allow on remove-only operations
-              allowRemoveWithoutAdd: !nextOn ? true : undefined,
             };
 
-            // If turning OFF and there is nothing to remove, treat as success (already off)
-            if (!nextOn) {
-              var hasRemoval = !!(payload.oldLineId || (payload.oldVariants && payload.oldVariants.length));
-              if (!hasRemoval) {
-                try {
-                  busy.showToast(ui, "Shipping protection removed.", "success");
-                } catch (e) {}
-                return { ok: true, contractId: contractShortId, patch: { lines: getContractLines(contract) } };
-              }
+            if (mode === "swap") {
+              var line = payload && payload.line ? payload.line : null;
+              if (!line) throw new Error("missing_line_for_swap");
+
+              var oldLineId = toStr(line && line.id);
+              if (!oldLineId) throw new Error("missing_oldLineId");
+
+              req.oldLineId = oldLineId;
             }
 
             // POST replaceVariants
-            var resp = await window.__SP.api.postJson("replaceVariants", payload);
+            var resp = await window.__SP.api.postJson("replaceVariants", req);
             if (!resp || resp.ok === false) {
               throw new Error(resp && resp.error ? resp.error : "replace_variants_failed");
             }
@@ -488,43 +363,50 @@
             var patch = resp && resp.patch ? resp.patch : null;
             if (!patch || typeof patch !== "object") patch = {};
 
-            // Patch cache (now preserves lines shape)
+            // Patch cache (preserve lines shape)
             var result = patchContractInCache(contractGid, patch);
             if (!result.ok) {
-              try {
-                console.warn("[toggleShippingProtection] cache patch failed:", result.error);
-              } catch (e2) {}
+              try { console.warn("[addSwap] cache patch failed:", result.error); } catch (e2) {}
             }
 
-            // Some screens render from in-memory state, not sessionStorage
-            try {
-              syncInMemoryContract(contractGid, result.contract || null);
-            } catch (eSync) {}
-
-            // Re-render the active screen so totals/UI recompute
+            // Sync in-memory + rerender
+            try { syncInMemoryContract(contractGid, result.contract || null); } catch (eSync) {}
             refreshCurrentScreen(contractGid);
 
             try {
-              busy.showToast(ui, nextOn ? "Shipping protection added." : "Shipping protection removed.", "success");
+              busy.showToast(ui, mode === "swap" ? "Item swapped." : "Item added.", "success");
             } catch (e3) {}
 
             return { ok: true, contract: result.contract || null, patch: patch };
           } catch (e) {
             try {
-              busy.showToast(ui, "Sorry — we couldn’t update shipping protection. Please try again.", "error");
+              busy.showToast(ui, "Sorry — we couldn’t update this subscription. Please try again.", "error");
             } catch (_) {}
             return { ok: false, error: String(e && e.message ? e.message : e) };
           }
         },
-        "Updating shipping protection…"
+        (toStr(payload && payload.mode).toLowerCase() === "swap") ? "Swapping item…" : "Adding item…"
       );
     } finally {
       __inFlight = false;
     }
   }
 
-  // Public API expected by the card:
-  window.__SP.actions.shippingProtection.toggle = function (ui, contractGid, nextOn, meta) {
-    return toggleShippingProtectionImpl(ui, contractGid, nextOn, meta);
+  // Public API (cards/items.js submitAddSwap will find this first)
+  window.__SP.actions.items.submitAddSwap = function (ui, payload) {
+    return submitAddSwapImpl(ui, payload);
+  };
+
+  // Optional convenience aliases (if other code expects them)
+  window.__SP.actions.items.applyAddSwap = window.__SP.actions.items.submitAddSwap;
+  window.__SP.actions.items.submitSwap = function (ui, payload) {
+    payload = payload || {};
+    payload.mode = "swap";
+    return submitAddSwapImpl(ui, payload);
+  };
+  window.__SP.actions.items.submitAdd = function (ui, payload) {
+    payload = payload || {};
+    payload.mode = "add";
+    return submitAddSwapImpl(ui, payload);
   };
 })();

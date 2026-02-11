@@ -19,6 +19,13 @@
     return isFinite(n) ? n : (fallback == null ? 0 : fallback);
   }
 
+  function shortId(gid) {
+    var s = String(gid || "");
+    if (!s) return "";
+    var parts = s.split("/");
+    return parts[parts.length - 1] || s;
+  }
+
   function showToast(ui, msg, type) {
     try {
       var busy = window.__SP.actions && window.__SP.actions.busy;
@@ -74,6 +81,54 @@
     return { shipLine: shipLine, lines: lines };
   }
 
+    // ---- tier pricing snapshot helpers --------------------------------------
+
+  function isRealLineForTier(ln, utils) {
+    if (!ln) return false;
+
+    // Exclude shipping protection (and similar non-real items)
+    try {
+      if (utils && typeof utils.isShippingProtectionLine === "function") {
+        if (utils.isShippingProtectionLine(ln)) return false;
+      }
+    } catch (e) {}
+
+    // Must have a variant + positive quantity
+    var vId = safeStr(ln && ln.variantId);
+    if (!vId) return false;
+
+    var qty = toNum(ln && ln.quantity, 0);
+    if (!(qty > 0)) return false;
+
+    // Exclude lines that look "non-real" / placeholder-ish
+    // (safe no-op if fields don't exist)
+    try {
+      if (ln.isRemoved || ln.isDeleted) return false;
+    } catch (e2) {}
+
+    return true;
+  }
+
+  function buildLineSnapshotFromContract(contract, utils) {
+    // Returns an array of "real" lines that tier-pricing logic can use.
+    // IMPORTANT: uses only the in-memory/cached contract object passed into this card.
+    var all = getContractLines(contract);
+    var snap = [];
+
+    for (var i = 0; i < all.length; i++) {
+      var ln = all[i];
+      if (!isRealLineForTier(ln, utils)) continue;
+
+      snap.push({
+        id: safeStr(ln && ln.id),
+        variantId: safeStr(ln && ln.variantId),
+        quantity: toNum(ln && ln.quantity, 1) || 1,
+      });
+    }
+
+    return snap;
+  }
+
   function addBtn(ui, text, onClick, opts) {
     opts = opts || {};
     var disabled = !!opts.disabled;
@@ -120,6 +175,38 @@
     }
   }
 
+  function buildVariantPriceMapFromCatalog(catalog) {
+    // returns:
+    //  { msrpCentsByVariantId: { [id:number]: number }, priceCentsByVariantId: { [id:number]: number } }
+    var msrpCentsByVariantId = {};
+    var priceCentsByVariantId = {};
+
+    if (!Array.isArray(catalog)) return { msrpCentsByVariantId: msrpCentsByVariantId, priceCentsByVariantId: priceCentsByVariantId };
+
+    for (var i = 0; i < catalog.length; i++) {
+      var p = catalog[i];
+      var vars = p && Array.isArray(p.variants) ? p.variants : [];
+      for (var j = 0; j < vars.length; j++) {
+        var v = vars[j];
+        if (!v) continue;
+
+        var id = toNum(v.id, 0);
+        if (!id) continue;
+
+        var priceCents = toNum(v.price_cents, 0);
+        var compareCents = toNum(v.compare_at_price_cents, 0);
+
+        // MSRP: prefer compare_at if present; otherwise treat price as MSRP baseline
+        var msrpCents = compareCents > 0 ? compareCents : (priceCents > 0 ? priceCents : 0);
+
+        if (priceCents > 0) priceCentsByVariantId[id] = priceCents;
+        if (msrpCents > 0) msrpCentsByVariantId[id] = msrpCents;
+      }
+    }
+
+    return { msrpCentsByVariantId: msrpCentsByVariantId, priceCentsByVariantId: priceCentsByVariantId };
+  }
+
   function buildExcludeVariantIdSet(lines) {
     var set = new Set();
     for (var i = 0; i < (lines ? lines.length : 0); i++) {
@@ -135,6 +222,101 @@
       if (m && typeof m.open === "function") return m;
     } catch (e) {}
     return null;
+  }
+
+    function pickRemoveModal() {
+    try {
+      var m = window.__SP && window.__SP.modals && window.__SP.modals.remove;
+      if (m && typeof m.open === "function") return m;
+    } catch (e) {}
+    return null;
+  }
+
+
+
+  function openRemoveModal(ui, args) {
+    var modal = pickRemoveModal();
+    if (!modal) {
+      showToast(ui, "Remove modal is not loaded.", "error");
+      return;
+    }
+
+    var actions = args.actions || null;
+
+    // Catalog (DOM) so modal can show MSRP / price like add-swap step 2
+    var catalog = getCatalogFromDom();
+    if (!catalog.length) {
+      // No catalog found = still allow modal (it will just omit price row)
+      catalog = [];
+    }
+
+    var computePrice = pickComputePrice(actions);
+
+    modal.open(ui, {
+      contractId: args.contractId,
+      line: args.line || null,
+      catalog: catalog,
+      computePrice: computePrice,
+
+      onRemove: async function () {
+        // Keep “remove” action wiring consistent with how you already expect it.
+        if (!actions || !actions.items || typeof actions.items.remove !== "function") {
+          throw new Error("Remove is not wired yet.");
+        }
+        return actions.items.remove(ui, String(args.contractId), args.line);
+      },
+
+      onSwapInstead: function () {
+        if (typeof args.onSwapInstead === "function") args.onSwapInstead();
+      },
+    });
+  }
+
+    function pickQuantityModal() {
+    try {
+      var m = window.__SP && window.__SP.modals && window.__SP.modals.quantity;
+      if (m && typeof m.open === "function") return m;
+    } catch (e) {}
+    return null;
+  }
+
+  function openQuantityModal(ui, args) {
+    var modal = pickQuantityModal();
+    if (!modal) {
+      showToast(ui, "Quantity modal is not loaded.", "error");
+      return;
+    }
+
+    var actions = args.actions || null;
+
+    // Catalog (DOM) so modal can show MSRP / price like add-swap step 2
+    var catalog = getCatalogFromDom();
+    if (!catalog.length) catalog = [];
+
+    var computePrice = pickComputePrice(actions);
+
+    modal.open(ui, {
+      contractId: args.contractId,
+      line: args.line || null,
+      catalog: catalog,
+      computePrice: computePrice,
+
+      onSubmit: async function (payload) {
+        // For now, we’ll call the existing hook if present.
+        // You said you’ll ask next for actions/quantity.js — we’ll wire that in there.
+        if (!actions || !actions.items) throw new Error("Actions not available.");
+        var items = actions.items;
+
+        // Prefer a dedicated handler if you add it later
+        if (typeof items.submitQuantity === "function") return items.submitQuantity(ui, payload);
+        if (typeof items.changeQty === "function") {
+          // Maintain backward compatibility with existing pattern
+          return items.changeQty(ui, String(args.contractId), args.line, payload.quantity, payload);
+        }
+
+        throw new Error("Quantity action is not wired yet.");
+      },
+    });
   }
 
   function pickComputePrice(actions) {
@@ -183,7 +365,7 @@
     throw new Error("Add/Swap submit handler is not wired yet.");
   }
 
-  function openAddSwapModal(ui, args) {
+    function openAddSwapModal(ui, args) {
     var modal = pickAddSwapModal();
     if (!modal) {
       showToast(ui, "Add/Swap modal is not loaded.", "error");
@@ -206,8 +388,13 @@
       catalog: catalog, // raw; modal normalizes
       excludeVariantIds: args.excludeVariantIds || null,
       computePrice: computePrice,
+
+      // ✅ Tier pricing snapshot (no fresh fetch; uses cached/in-memory contract/lines)
+      // Modal will call this as quantity/variant changes to recalc tier pricing.
+      getLineSnapshot: (typeof args.getLineSnapshot === "function") ? args.getLineSnapshot : null,
+      lineSnapshot: args.lineSnapshot || null,
+
       onSubmit: async function (payload) {
-        // delegate to actions
         await submitAddSwap(actions, ui, payload);
       },
     });
@@ -248,9 +435,14 @@
     return String(currencyCode).toUpperCase() + " " + fixed;
   }
 
-  function computeLinePrices(ln) {
+  function centsToMoney(cents) {
+    return toNum(cents, 0) / 100;
+  }
+
+  function computeLinePrices(ln, msrpCentsByVariantId) {
     var qty = toNum(ln && ln.quantity, 1) || 1;
 
+    // What customer pays NOW: always from line item
     var currentUnit = moneyAmount(ln && ln.currentPrice);
     var lineDiscounted = moneyAmount(ln && ln.lineDiscountedPrice);
 
@@ -263,19 +455,29 @@
     if (currentUnit > 0) unitNow = currentUnit;
     else unitNow = qty > 0 ? (lineNow / qty) : 0;
 
-    var baseUnit = 0;
+    // MSRP: from catalog (preferred)
+    var unitMsrp = 0;
+
     try {
-      baseUnit = moneyAmount(ln && ln.pricingPolicy && ln.pricingPolicy.basePrice);
+      var vId = toNum(shortId(ln && ln.variantId), 0);
+      if (vId && msrpCentsByVariantId && msrpCentsByVariantId[vId] != null) {
+        unitMsrp = centsToMoney(msrpCentsByVariantId[vId]);
+      }
     } catch (e) {
-      baseUnit = 0;
+      unitMsrp = 0;
     }
 
-    var unitMsrp = 0;
-    var showMsrp = false;
-    if (baseUnit > 0 && unitNow > 0 && baseUnit > unitNow + 0.009) {
-      unitMsrp = baseUnit;
-      showMsrp = true;
+    // Fallback: pricingPolicy basePrice if catalog does not have it
+    if (!(unitMsrp > 0)) {
+      try {
+        unitMsrp = moneyAmount(ln && ln.pricingPolicy && ln.pricingPolicy.basePrice);
+      } catch (e2) {
+        unitMsrp = 0;
+      }
     }
+
+    var showMsrp = false;
+    if (unitMsrp > 0 && unitNow >= 0 && unitMsrp > unitNow + 0.009) showMsrp = true;
 
     var lineMsrp = showMsrp ? (unitMsrp * qty) : 0;
 
@@ -291,12 +493,12 @@
 
   // ---- line row (image + details + price) ------------
 
-  function renderLineRow(ui, ln, utils, currencyCode) {
+  function renderLineRow(ui, ln, utils, currencyCode, msrpCentsByVariantId) {
     var img = getLineImageUrl(ln, utils);
     var title = (utils && utils.safeStr ? utils.safeStr(ln && ln.title) : safeStr(ln && ln.title)) || "Item";
     var variant = utils && utils.safeStr ? utils.safeStr(ln && ln.variantTitle) : safeStr(ln && ln.variantTitle);
 
-    var p = computeLinePrices(ln);
+    var p = computeLinePrices(ln, msrpCentsByVariantId);
     var qty = p.qty;
 
     var priceBlock = ui.el("div", { class: "sp-line__priceblock" }, [
@@ -342,38 +544,60 @@
     return btn;
   }
 
-  function createDisclosure(ui, ln, contract, actions, isReadOnly, totalRealLines, excludeVariantIds) {
+    function createDisclosure(ui, ln, contract, utils, actions, isReadOnly, totalRealLines, excludeVariantIds) {
     var canAct = !isReadOnly && !!(contract && contract.id);
 
-    function onSwap() {
+        function onSwap() {
       if (!canAct) return;
+
       openAddSwapModal(ui, {
         mode: "swap",
         contractId: String(contract.id),
         line: ln,
         excludeVariantIds: excludeVariantIds,
         actions: actions,
+
+        // ✅ Snapshot of REAL lines only (excludes ship protection + non-real)
+        // Modal handles swap-mode override (swapped line becomes selected qty/variant)
+        getLineSnapshot: function () {
+          return buildLineSnapshotFromContract(contract, utils);
+        },
       });
     }
 
     function onQty() {
-      try {
-        if (actions && actions.items && typeof actions.items.changeQty === "function") {
-          actions.items.changeQty(ui, String(contract.id), ln);
-          return;
-        }
-      } catch (e) {}
-      showToast(ui, "Change quantity is not wired yet.", "error");
+      if (!canAct) return;
+
+      openQuantityModal(ui, {
+        contractId: String(contract.id),
+        line: ln,
+        actions: actions,
+      });
     }
 
     function onRemove() {
-      try {
-        if (actions && actions.items && typeof actions.items.remove === "function") {
-          actions.items.remove(ui, String(contract.id), ln);
-          return;
-        }
-      } catch (e) {}
-      showToast(ui, "Remove is not wired yet.", "error");
+      if (!canAct) return;
+
+      openRemoveModal(ui, {
+        contractId: String(contract.id),
+        line: ln,
+        actions: actions,
+        onSwapInstead: function () {
+          // Reuse the exact swap flow you already have
+          openAddSwapModal(ui, {
+            mode: "swap",
+            contractId: String(contract.id),
+            line: ln,
+            excludeVariantIds: excludeVariantIds,
+            actions: actions,
+
+            // ✅ Snapshot of REAL lines only (excludes ship protection + non-real)
+            getLineSnapshot: function () {
+              return buildLineSnapshotFromContract(contract, utils);
+            },
+          });
+        },
+      });
     }
 
     var btn = ui.el(
@@ -417,30 +641,45 @@
 
   // ---- totals block ---------------------------------------------------------
 
-  function computeTotals(contract, lines, currencyCode) {
+  function computeTotals(contract, lines, shipLine, currencyCode, msrpCentsByVariantId) {
     var itemsNow = 0;
     var itemsMsrp = 0;
 
     for (var i = 0; i < lines.length; i++) {
-      var p = computeLinePrices(lines[i]);
+      var p = computeLinePrices(lines[i], msrpCentsByVariantId);
       itemsNow += toNum(p.lineNow, 0);
       if (p.showMsrp) itemsMsrp += toNum(p.lineMsrp, 0);
       else itemsMsrp += toNum(p.lineNow, 0);
     }
 
+    // Shipping Protection line (excluded from list, included in totals)
+    var shipProtNow = 0;
+    var shipProtMsrp = 0;
+    try {
+      if (shipLine) {
+        var sp = computeLinePrices(shipLine, msrpCentsByVariantId);
+        shipProtNow = toNum(sp.lineNow, 0);
+        shipProtMsrp = sp.showMsrp ? toNum(sp.lineMsrp, 0) : toNum(sp.lineNow, 0);
+      }
+    } catch (eSp) {}
+
+    // Delivery / shipping price on contract
     var ship = 0;
     try { ship = moneyAmount(contract && contract.deliveryPrice); } catch (e) { ship = 0; }
 
     return {
       itemsNow: itemsNow,
       itemsMsrp: itemsMsrp,
+      shipProtNow: shipProtNow,
+      shipProtMsrp: shipProtMsrp,
       ship: ship,
-      totalNow: itemsNow + ship,
+      totalNow: itemsNow + shipProtNow + ship,
+      totalMsrp: itemsMsrp + shipProtMsrp + ship,
     };
   }
 
   function renderTotals(ui, totals, currencyCode) {
-    var showMsrp = totals.itemsMsrp > totals.itemsNow + 0.009;
+    var showMsrp = totals.totalMsrp > totals.totalNow + 0.009;
 
     function row(label, msrpText, nowText, isTotal) {
       return ui.el("div", { class: "sp-items-total__row" + (isTotal ? " sp-items-total__row--total" : "") }, [
@@ -452,13 +691,16 @@
       ]);
     }
 
-    var msrpItems = showMsrp ? formatMoney(totals.itemsMsrp, currencyCode) : "";
-    var nowItems = formatMoney(totals.itemsNow, currencyCode);
+    var msrpItems = showMsrp ? formatMoney(totals.totalMsrp, currencyCode) : "";
+    var nowItems = formatMoney(totals.totalNow, currencyCode);
 
     return ui.el("div", { class: "sp-items-total" }, [
-      row("Items subtotal", msrpItems, nowItems, false),
+      row("Items subtotal", "", formatMoney(totals.itemsNow, currencyCode), false),
+      (totals.shipProtNow > 0.009)
+        ? row("Shipping protection", "", formatMoney(totals.shipProtNow, currencyCode), false)
+        : ui.el("span", {}, []),
       row("Shipping", "", formatMoney(totals.ship, currencyCode), false),
-      row("Total", "", formatMoney(totals.totalNow, currencyCode), true),
+      row("Total", msrpItems, nowItems, true),
     ]);
   }
 
@@ -486,6 +728,12 @@
 
       var split = splitLinesExcludingShipProt(contract, utils);
       var lines = split.lines;
+      var shipLine = split.shipLine;
+
+      // Build MSRP map from catalog (DOM)
+      var catalog = getCatalogFromDom();
+      var priceMaps = buildVariantPriceMapFromCatalog(catalog);
+      var msrpCentsByVariantId = priceMaps.msrpCentsByVariantId;
 
       var currencyCode = pickCurrency(contract, lines);
 
@@ -510,8 +758,8 @@
             try { key = ln && ln.id ? String(ln.id) : null; } catch (e) { key = null; }
             if (!key) key = "line_" + String(idx);
 
-            var rowEl = renderLineRow(ui, ln, utils, currencyCode);
-            var d = createDisclosure(ui, ln, contract, actions, isReadOnly, lines.length, excludeVariantIds);
+            var rowEl = renderLineRow(ui, ln, utils, currencyCode, msrpCentsByVariantId);
+            var d = createDisclosure(ui, ln, contract, utils, actions, isReadOnly, lines.length, excludeVariantIds);
 
             var group = ui.el("div", { class: "sp-itemgroup" }, [
               rowEl,
@@ -562,24 +810,30 @@
 
       var linesEl = ui.el("div", { class: "sp-detail__lines" }, listChildren);
 
-      // Totals (items + shipping)
+      // Totals (items + ship prot + shipping)
       var totalsEl = ui.el("span", {}, []);
       try {
-        if (lines && lines.length) {
-          var totals = computeTotals(contract, lines, currencyCode);
+        if (lines && (lines.length || shipLine)) {
+          var totals = computeTotals(contract, lines, shipLine, currencyCode, msrpCentsByVariantId);
           totalsEl = renderTotals(ui, totals, currencyCode);
         }
       } catch (eTotals) {}
 
       var canAdd = !isReadOnly && !!(contract && contract.id);
-      function onAdd() {
+            function onAdd() {
         if (!canAdd) return;
+
         openAddSwapModal(ui, {
           mode: "add",
           contractId: String(contract.id),
           line: null,
           excludeVariantIds: excludeVariantIds,
           actions: actions,
+
+          // ✅ Snapshot of REAL lines only (excludes ship protection + non-real)
+          getLineSnapshot: function () {
+            return buildLineSnapshotFromContract(contract, utils);
+          },
         });
       }
 
@@ -599,7 +853,7 @@
         totalsEl,
       ]);
 
-      return { el: card, lines: lines, shipLine: split.shipLine };
+      return { el: card, lines: lines, shipLine: shipLine };
     },
   };
 })();

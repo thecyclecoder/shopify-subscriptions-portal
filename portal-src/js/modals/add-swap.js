@@ -8,18 +8,26 @@
 // Product rows are clickable (no visible radios).
 // Stars render as: ★★★★☆ 4.8 (123)
 //
-// Normalizes catalog into:
-//   {
-//     productId: string,
-//     title: string,
-//     imageUrl: string,
-//     directResponseHeadline: string,
-//     directResponseSubhead: string,
-//     ratingValue: number|null,
-//     ratingCount: number|null,
-//     variants: [ { variantId: string, title: string, imageUrl?: string, ... } ],
-//     _raw: originalProduct
-//   }
+// Pricing shown on step 2:
+// - MSRP comes from catalog (variant compare_at / msrp if present, else variant price)
+// - "Your price" applies:
+//    25% subscribe & save discount (always)
+//    PLUS tier discount based on resulting quantities across ALL "real" line items:
+//      minQty >= 4 => 16%
+//      minQty == 3 => 12%
+//      minQty == 2 =>  8%
+//      otherwise   =>  0%
+//
+// To compute tier discount we need current line quantities.
+// Pass one of these into opts:
+//
+//  A) opts.getLineSnapshot(): () => [{ variantId, quantity, isReal?: boolean }]
+//     (recommended; always current)
+//
+//  B) opts.lineSnapshot: [{ variantId, quantity, isReal?: boolean }]
+//
+// For swap mode, the modal will replace the swapped line’s quantity with the selected quantity
+// when computing the tier discount. It will also replace variantId if user selects a different variant.
 
 (function () {
   window.__SP = window.__SP || {};
@@ -47,6 +55,31 @@
     var rem = n % 100;
     var rem2 = rem < 10 ? "0" + String(rem) : String(rem);
     return sign + "$" + String(dollars) + "." + rem2;
+  }
+
+  function parseMoneyToCents(v) {
+    if (v == null) return null;
+    if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
+
+    var s = safeStr(v).trim();
+    if (!s) return null;
+
+    // strip currency + commas
+    s = s.replace(/[$,]/g, "").trim();
+    // if it's "79.95"
+    var n = Number(s);
+    if (!Number.isFinite(n)) return null;
+
+    // If it looks like dollars (has decimal or small number), convert.
+    // If it looks like cents already (e.g. 7995), keep.
+    if (s.indexOf(".") !== -1 || n < 1000) {
+      return Math.round(n * 100);
+    }
+    return Math.trunc(n);
+  }
+
+  function roundCents(x) {
+    return Math.round(Number(x) || 0);
   }
 
   // ----------------------------
@@ -157,21 +190,17 @@
     return safeStr(v).trim();
   }
 
-  // Ratings: handle multiple common shapes
   function pickRatingValue(p) {
     var v = toNum(p && p.ratingValue, null);
     if (v == null && p && p.rating && p.rating.value != null) v = toNum(p.rating.value, null);
 
-    // metafields candidates
     if (v == null && p && p.metafields) {
       var mf = p.metafields;
 
-      // direct keys
       v = toNum(pickScalar(mf.rating_value), null);
       if (v == null) v = toNum(pickScalar(mf.ratingValue), null);
       if (v == null) v = toNum(pickScalar(mf.reviews_rating), null);
 
-      // Shopify reviews app style sometimes: reviews_rating.value.rating
       if (v == null && mf.reviews_rating && isPlainObject(mf.reviews_rating)) {
         var rr = mf.reviews_rating.value != null ? mf.reviews_rating.value : mf.reviews_rating;
         if (rr && isPlainObject(rr)) {
@@ -196,7 +225,6 @@
       if (v == null) v = toNum(pickScalar(mf.ratingCount), null);
       if (v == null) v = toNum(pickScalar(mf.reviews_count), null);
 
-      // reviews_rating.value.count
       if (v == null && mf.reviews_rating && isPlainObject(mf.reviews_rating)) {
         var rr = mf.reviews_rating.value != null ? mf.reviews_rating.value : mf.reviews_rating;
         if (rr && isPlainObject(rr)) {
@@ -209,6 +237,50 @@
     return v;
   }
 
+  function pickVariantPriceCents(rawV) {
+    if (!rawV) return null;
+
+    // Prefer explicit cents fields
+    var c =
+      (typeof rawV.priceCents === "number" ? rawV.priceCents : null) ||
+      (typeof rawV.price_cents === "number" ? rawV.price_cents : null) ||
+      (typeof rawV.price_cent === "number" ? rawV.price_cent : null);
+
+    if (Number.isFinite(c)) return Math.trunc(c);
+
+    // Fallback: strings like "79.95"
+    var s =
+      pickScalar(rawV.price) ||
+      pickScalar(rawV.price_amount) ||
+      pickScalar(rawV.priceAmount) ||
+      pickScalar(rawV.unitPrice) ||
+      "";
+
+    var parsed = parseMoneyToCents(s);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function pickVariantMsrpCents(rawV) {
+    if (!rawV) return null;
+
+    var c =
+      (typeof rawV.msrpCents === "number" ? rawV.msrpCents : null) ||
+      (typeof rawV.compareAtPriceCents === "number" ? rawV.compareAtPriceCents : null) ||
+      (typeof rawV.compare_at_price_cents === "number" ? rawV.compare_at_price_cents : null) ||
+      (typeof rawV.compare_at_price_cent === "number" ? rawV.compare_at_price_cent : null);
+
+    if (Number.isFinite(c)) return Math.trunc(c);
+
+    var s =
+      pickScalar(rawV.compare_at_price) ||
+      pickScalar(rawV.compareAtPrice) ||
+      pickScalar(rawV.msrp) ||
+      "";
+
+    var parsed = parseMoneyToCents(s);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   function normalizeVariant(rawV) {
     if (!rawV) return null;
 
@@ -219,8 +291,11 @@
       _raw: rawV,
     };
 
-    if (Number.isFinite(rawV.msrpCents)) out.msrpCents = rawV.msrpCents;
-    if (Number.isFinite(rawV.priceCents)) out.priceCents = rawV.priceCents;
+    var msrp = pickVariantMsrpCents(rawV);
+    var price = pickVariantPriceCents(rawV);
+
+    if (Number.isFinite(msrp)) out.msrpCents = msrp;
+    if (Number.isFinite(price)) out.priceCents = price;
 
     return out.variantId ? out : null;
   }
@@ -303,47 +378,40 @@
     } catch (e) {}
     try { console.log("[toast]", type || "info", msg); } catch (e2) {}
   }
-function renderStarsInline(ui, ratingValue, ratingCount) {
-  if (!Number.isFinite(ratingValue) || ratingValue <= 0) return ui.el("span", {}, []);
 
-  var rv = Math.max(0, Math.min(5, ratingValue));
+  function renderStarsInline(ui, ratingValue, ratingCount) {
+    if (!Number.isFinite(ratingValue) || ratingValue <= 0) return ui.el("span", {}, []);
 
-  // PDP-style rounding:
-  // .3-.7 => half star
-  // >.7   => bump to next full star
-  var base = Math.floor(rv);
-  var dec = rv - base;
+    var rv = Math.max(0, Math.min(5, ratingValue));
+    var base = Math.floor(rv);
+    var dec = rv - base;
 
-  var full = base;
-  var half = 0;
+    var full = base;
+    var half = 0;
 
-  if (dec >= 0.3 && dec <= 0.7) {
-    half = 1;
-  } else if (dec > 0.7) {
-    full = Math.min(5, full + 1);
+    if (dec >= 0.3 && dec <= 0.7) {
+      half = 1;
+    } else if (dec > 0.7) {
+      full = Math.min(5, full + 1);
+    }
+
+    var empty = 5 - full - half;
+    var HALF = "⯨";
+    var stars = "";
+    for (var i = 0; i < full; i++) stars += "★";
+    if (half) stars += HALF;
+    for (var j = 0; j < empty; j++) stars += "☆";
+
+    var suffix = "";
+    if (Number.isFinite(ratingCount) && ratingCount > 0) {
+      suffix = " (" + String(Math.trunc(ratingCount)) + ")";
+    }
+
+    return ui.el("div", { class: "sp-addswap-stars" }, [
+      ui.el("span", { class: "sp-addswap-stars__glyphs" }, [stars]),
+      ui.el("span", { class: "sp-addswap-stars__text sp-muted" }, [String(rv.toFixed(1)) + suffix]),
+    ]);
   }
-
-  var empty = 5 - full - half;
-
-  // Choose a half-star glyph. If you don’t like this character,
-  // we can switch to the CSS gradient method later.
-  var HALF = "⯨"; // Unicode half-star
-  var stars = "";
-  for (var i = 0; i < full; i++) stars += "★";
-  if (half) stars += HALF;
-  for (var j = 0; j < empty; j++) stars += "☆";
-
-  var suffix = "";
-  if (Number.isFinite(ratingCount) && ratingCount > 0) {
-    suffix = " (" + String(Math.trunc(ratingCount)) + ")";
-  }
-
-  return ui.el("div", { class: "sp-addswap-stars" }, [
-    ui.el("span", { class: "sp-addswap-stars__glyphs" }, [stars]),
-    ui.el("span", { class: "sp-addswap-stars__text sp-muted" }, [String(rv.toFixed(1)) + suffix]),
-  ]);
-}
-  
 
   function rowBtnAttrs(isSelected) {
     return {
@@ -365,9 +433,13 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
 
     var btn = ui.el("button", rowBtnAttrs(false), [
       ui.el("div", { class: "sp-addswap-rowbtn__inner sp-addswap-prodrow" }, [
-        hasImg
-          ? ui.el("img", { src: img, alt: title, class: "sp-addswap-prodrow__img" }, [])
-          : ui.el("div", { class: "sp-addswap-prodrow__img sp-addswap-prodrow__img--placeholder", "aria-hidden": "true" }, []),
+        ui.el("div", { class: "sp-addswap-prodrow__imgwrap" }, [
+          hasImg
+            ? ui.el("img", { src: img, alt: title, class: "sp-addswap-prodrow__img" }, [])
+            : ui.el("div", { class: "sp-addswap-prodrow__img sp-addswap-prodrow__img--placeholder", "aria-hidden": "true" }, []),
+
+          ui.el("div", { class: "sp-addswap-prodrow__selectcue", "aria-hidden": "true" }, ["Select"]),
+        ]),
 
         ui.el("div", { class: "sp-addswap-prodrow__text" }, [
           ui.el("div", { class: "sp-addswap-prodrow__title" }, [title]),
@@ -402,7 +474,7 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
     return btn;
   }
 
-  function renderPriceRow(ui, msrpCents, priceCents) {
+  function renderPriceRow(ui, msrpCents, priceCents, noteText) {
     var hasMsrp = Number.isFinite(msrpCents) && msrpCents > 0;
     var hasPrice = Number.isFinite(priceCents);
 
@@ -412,7 +484,83 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
         hasMsrp ? ui.el("div", { class: "sp-addswap-price__msrp" }, [formatMoneyFromCents(msrpCents)]) : ui.el("span", {}, []),
         hasPrice ? ui.el("div", { class: "sp-addswap-price__now" }, [formatMoneyFromCents(priceCents)]) : ui.el("div", { class: "sp-addswap-price__dash sp-muted" }, ["—"]),
       ]),
+      noteText ? ui.el("div", { class: "sp-addswap-price__note sp-muted" }, [noteText]) : ui.el("span", {}, []),
     ]);
+  }
+
+  function tierDiscountFromTotalQty(totalQty) {
+    var q = toInt(totalQty, 0);
+    if (q >= 4) return 0;
+    if (q === 3) return 0;
+    if (q === 2) return 0;
+    return 0;
+  }
+
+  function computeTierFromSnapshot(snapshot, mode, swappedLine, newVariantId, newQty) {
+    var arr = Array.isArray(snapshot) ? snapshot : [];
+    var real = [];
+
+    for (var i = 0; i < arr.length; i++) {
+      var it = arr[i] || {};
+      var id = safeStr(it.id);
+      var vid = safeStr(it.variantId);
+      var qty = toInt(it.quantity, 0);
+      var isReal = (it.isReal === false) ? false : true;
+      if (!vid || qty <= 0 || !isReal) continue;
+
+      real.push({ id: id, variantId: vid, quantity: qty });
+    }
+
+    // SWAP: replace the swapped line with the selected qty + selected variant BEFORE summing
+    if (mode === "swap" && swappedLine) {
+      var swappedId = safeStr(swappedLine.id);
+      var oldVid = safeStr(swappedLine.variantId);
+      var replaced = false;
+
+      // Prefer matching by line id (best)
+      if (swappedId) {
+        for (var r0 = 0; r0 < real.length; r0++) {
+          if (real[r0].id && real[r0].id === swappedId) {
+            real[r0].variantId = safeStr(newVariantId) || real[r0].variantId;
+            real[r0].quantity = toInt(newQty, 0);
+            replaced = true;
+            break;
+          }
+        }
+      }
+
+      // Fallback: match by old variant id (legacy)
+      if (!replaced && oldVid) {
+        for (var r = 0; r < real.length; r++) {
+          if (real[r].variantId === oldVid) {
+            real[r].variantId = safeStr(newVariantId) || real[r].variantId;
+            real[r].quantity = toInt(newQty, 0);
+            replaced = true;
+            break;
+          }
+        }
+      }
+
+      // If not found, include best-effort
+      if (!replaced && safeStr(newVariantId)) {
+        real.push({ id: "", variantId: safeStr(newVariantId), quantity: toInt(newQty, 0) });
+      }
+    }
+
+    // ADD: include the new item so tier updates live
+    if (mode !== "swap" && safeStr(newVariantId)) {
+      real.push({ id: "", variantId: safeStr(newVariantId), quantity: toInt(newQty, 0) });
+    }
+
+    if (!real.length) return { totalQty: 0, tierPct: 0 };
+
+    // ✅ SUM across all real lines
+    var total = 0;
+    for (var j = 0; j < real.length; j++) {
+      total += toInt(real[j].quantity, 0);
+    }
+
+    return { totalQty: total, tierPct: tierDiscountFromTotalQty(total) };
   }
 
   // ----------------------------
@@ -423,10 +571,17 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
     opts = opts || {};
     var mode = (safeStr(opts.mode).toLowerCase() === "swap") ? "swap" : "add";
     var contractId = safeStr(opts.contractId);
-    var line = opts.line || null;
+    var line = opts.line || null; // swapped line object (should include variantId ideally)
     var excludeVariantIds = opts.excludeVariantIds || null;
     var catalog = normalizeCatalog(opts.catalog);
+
+    // Optional external price calculator (still supported)
     var computePrice = (typeof opts.computePrice === "function") ? opts.computePrice : null;
+
+    // Snapshot support for tier pricing
+    var getLineSnapshot = (typeof opts.getLineSnapshot === "function") ? opts.getLineSnapshot : null;
+    var staticSnapshot = Array.isArray(opts.lineSnapshot) ? opts.lineSnapshot : null;
+
     var onSubmit = (typeof opts.onSubmit === "function") ? opts.onSubmit : null;
 
     if (!ui || typeof ui.el !== "function") throw new Error("add-swap modal: ui.el is required");
@@ -440,7 +595,7 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
       step: 1, // 1=product, 2=flavor+qty
       selectedProductKey: "",
       selectedVariantId: "",
-      quantity: 1,
+      quantity: 2, // default to 2
       submitting: false,
     };
 
@@ -465,6 +620,75 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
         if (safeStr(v && v.variantId) === state.selectedVariantId) return v;
       }
       return allowed.length ? allowed[0] : null;
+    }
+
+function getSnapshotNow() {
+      try {
+        if (getLineSnapshot) {
+          var s = getLineSnapshot() || [];
+          return s;
+        }
+      } catch (e) {
+
+      }
+
+      return staticSnapshot || [];
+    }
+
+    function computeDisplayedPriceForVariant(variant, qty) {
+      qty = toInt(qty, 1) || 1;
+      if (!variant) return { msrpCents: null, priceCents: null, note: "" };
+
+      // Allow external calculator override if provided
+      if (computePrice) {
+        try {
+          var out = computePrice({
+            variant: variant,
+            qty: qty,
+            context: { mode: mode, contractId: contractId, line: line }
+          }) || {};
+          if (Number.isFinite(out.msrpCents) || Number.isFinite(out.priceCents)) {
+            return {
+              msrpCents: Number.isFinite(out.msrpCents) ? out.msrpCents : null,
+              priceCents: Number.isFinite(out.priceCents) ? out.priceCents : null,
+              note: safeStr(out.note || ""),
+            };
+          }
+        } catch (e0) {}
+      }
+
+      // Default internal pricing
+      var unitMsrp = Number.isFinite(variant.msrpCents) ? variant.msrpCents : null;
+      var unitBase = Number.isFinite(variant.priceCents) ? variant.priceCents : null;
+
+      // If msrp missing, treat "msrp" as base price so the strike-through still makes sense
+      if (!Number.isFinite(unitMsrp) && Number.isFinite(unitBase)) unitMsrp = unitBase;
+      if (!Number.isFinite(unitBase) && Number.isFinite(unitMsrp)) unitBase = unitMsrp;
+
+      if (!Number.isFinite(unitMsrp) || !Number.isFinite(unitBase)) {
+        return { msrpCents: null, priceCents: null, note: "" };
+      }
+
+      // Always 25% subscribe & save off MSRP/base
+      var subscribePct = 0.25;
+
+      // Tier discount depends on resulting min quantity across real items
+      var snap = getSnapshotNow();
+      var tierInfo = computeTierFromSnapshot(snap, mode, line, variant.variantId, qty);
+      var tierPct = tierInfo.tierPct;
+
+      var unitAfter = unitBase * (1 - subscribePct) * (1 - tierPct);
+      var totalMsrp = unitMsrp * qty;
+      var totalAfter = roundCents(unitAfter * qty);
+
+      var note = "";
+      if (tierPct > 0) {
+        note = "Includes " + Math.round(tierPct * 100) + "% bundle discount at qty " + String(tierInfo.totalQty) + ".";
+      } else {
+        note = "Includes 25% subscribe & save.";
+      }
+
+      return { msrpCents: totalMsrp, priceCents: totalAfter, note: note };
     }
 
     // Build modal DOM
@@ -495,39 +719,43 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
     function rebuildFooter() {
       while (footerEl.firstChild) footerEl.removeChild(footerEl.firstChild);
 
+      // Step 2: Submit first, Cancel second
+      if (state.step === 2) {
+        var submitBtn = ui.el("button", { type: "button", class: "sp-btn sp-btn-primary sp-addswap-submit" }, ["Submit"]);
+        submitBtn.addEventListener("click", function () {
+          handleSubmit(doClose, submitBtn);
+        });
+        footerEl.appendChild(submitBtn);
+
+        var cancelBtn2 = ui.el("button", { type: "button", class: "sp-btn sp-btn--ghost" }, ["Cancel"]);
+        cancelBtn2.addEventListener("click", doClose);
+        footerEl.appendChild(cancelBtn2);
+        return;
+      }
+
+      // Step 1: only cancel
       var cancelBtn = ui.el("button", { type: "button", class: "sp-btn sp-btn--ghost" }, ["Cancel"]);
       cancelBtn.addEventListener("click", doClose);
       footerEl.appendChild(cancelBtn);
-
-      // Only show submit on step 2
-      if (state.step === 2) {
-        var confirmBtn = ui.el("button", { type: "button", class: "sp-btn sp-btn-primary" }, [mode === "swap" ? "Swap" : "Add"]);
-        confirmBtn.addEventListener("click", function () {
-          handleSubmit(doClose, confirmBtn);
-        });
-        footerEl.appendChild(confirmBtn);
-      }
     }
 
     function rebuildBody() {
       while (bodyEl.firstChild) bodyEl.removeChild(bodyEl.firstChild);
 
-      // Intro note (tight)
       bodyEl.appendChild(
         ui.el("div", { class: "sp-note sp-addswap-note" }, [
           ui.el("div", { class: "sp-note__title" }, [
-            state.step === 1 ? "Step 1: Choose a product" : "Step 2: Choose flavor and quantity",
+            state.step === 1 ? "Step 1: Choose your new product" : "Step 2: Choose flavor and quantity",
           ]),
           ui.el("div", { class: "sp-note__body" }, [
             state.step === 1
-              ? "Tap a product to continue."
-              : "Pick your flavor and quantity, then confirm.",
+              ? "Tap a product below to continue."
+              : "Pick your flavor and quantity, then submit.",
           ]),
         ])
       );
 
       if (state.step === 1) {
-        // Product list
         var list = ui.el("div", { class: "sp-addswap-list sp-addswap-list--products" }, []);
 
         for (var i = 0; i < catalog.length; i++) {
@@ -542,6 +770,10 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
             list.appendChild(
               productRowBtn(ui, prod, function () {
                 state.selectedProductKey = key;
+
+                // When entering step 2, force default qty = 2 every time
+                state.quantity = 2;
+
                 state.selectedVariantId = safeStr(allowed[0].variantId);
                 state.step = 2;
                 rebuildAll();
@@ -555,10 +787,9 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
         return;
       }
 
-      // Step 2: flavor + qty
+      // Step 2
       var p = getSelectedProduct();
 
-      // Back row (and selected product summary)
       var backBtn = ui.el("button", { type: "button", class: "sp-btn sp-btn--ghost sp-addswap-back" }, ["← Back"]);
       backBtn.addEventListener("click", function () {
         state.step = 1;
@@ -596,7 +827,6 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
       var allowedVariants = p ? filterVariants(p, excludeVariantIds) : [];
       var v = getSelectedVariant(p);
 
-      // Flavor list (button rows)
       bodyEl.appendChild(ui.el("div", { class: "sp-addswap-sectionlabel sp-addswap-sectionlabel--spaced" }, ["Flavor"]));
 
       var vList = ui.el("div", { class: "sp-addswap-list sp-addswap-list--variants" }, []);
@@ -606,51 +836,37 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
           vList.appendChild(
             variantRowBtn(ui, vv, id === state.selectedVariantId, function () {
               state.selectedVariantId = id;
-              rebuildAll();
+              rebuildAll(); // re-computes price too
             })
           );
         })(allowedVariants[j2]);
       }
       bodyEl.appendChild(vList);
 
-      // Quantity
-      var qty = toInt(state.quantity, 1) || 1;
+      // Quantity (default 2)
+      var qty = toInt(state.quantity, 2) || 2;
+
+      function opt(n) {
+        var attrs = { value: String(n) };
+        if (qty === n) attrs.selected = "selected";
+        return ui.el("option", attrs, [String(n)]);
+      }
+
       var qtyWrap = ui.el("div", { class: "sp-addswap-qty" }, [
         ui.el("div", { class: "sp-addswap-qty__label" }, ["Quantity"]),
-        ui.el("select", { class: "sp-select" }, [
-          ui.el("option", { value: "1", selected: qty === 1 }, ["1"]),
-          ui.el("option", { value: "2", selected: qty === 2 }, ["2"]),
-          ui.el("option", { value: "3", selected: qty === 3 }, ["3"]),
-        ]),
+        ui.el("select", { class: "sp-select" }, [opt(1), opt(2), opt(3)]),
       ]);
 
       qtyWrap.querySelector("select").addEventListener("change", function (e) {
-        state.quantity = toInt(e && e.target && e.target.value, 1) || 1;
-        rebuildAll();
+        state.quantity = toInt(e && e.target && e.target.value, 2) || 2;
+        rebuildAll(); // re-computes tier + price
       });
 
       bodyEl.appendChild(qtyWrap);
 
-      // Price display
-      var msrpCents = null;
-      var priceCents = null;
-
-      if (computePrice && v) {
-        try {
-          var out = computePrice({
-            variant: v,
-            qty: state.quantity,
-            context: { mode: mode, contractId: contractId, line: line }
-          }) || {};
-          msrpCents = Number.isFinite(out.msrpCents) ? out.msrpCents : null;
-          priceCents = Number.isFinite(out.priceCents) ? out.priceCents : null;
-        } catch (e1) {}
-      } else if (v) {
-        msrpCents = Number.isFinite(v.msrpCents) ? v.msrpCents : null;
-        priceCents = Number.isFinite(v.priceCents) ? v.priceCents : null;
-      }
-
-      bodyEl.appendChild(renderPriceRow(ui, msrpCents, priceCents));
+      // Price display (always compute from catalog + rules if computePrice not provided)
+      var priceOut = computeDisplayedPriceForVariant(v, state.quantity);
+      bodyEl.appendChild(renderPriceRow(ui, priceOut.msrpCents, priceOut.priceCents, priceOut.note));
     }
 
     function rebuildAll() {
@@ -680,7 +896,7 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
           variantId: safeStr(v.variantId),
           variant: v,
           product: p,
-          quantity: toInt(state.quantity, 1) || 1,
+          quantity: toInt(state.quantity, 2) || 2,
         });
 
         closeFn();
@@ -692,10 +908,11 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
       }
     }
 
-    // Initialize default step/product
+    // Initialize
     state.step = 1;
     state.selectedProductKey = "";
     state.selectedVariantId = "";
+    state.quantity = 2;
 
     card.appendChild(titleEl);
     card.appendChild(bodyEl);
@@ -703,10 +920,8 @@ function renderStarsInline(ui, ratingValue, ratingCount) {
     overlay.appendChild(card);
     state.root = overlay;
 
-    // First render
     rebuildAll();
 
-    // Mount
     ensureBodyNoScroll(true);
     document.body.appendChild(overlay);
   }

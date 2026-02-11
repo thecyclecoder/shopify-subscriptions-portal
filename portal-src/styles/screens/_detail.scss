@@ -372,7 +372,7 @@
 
 .sp-detail__cancel {
   border: 1px solid rgba(239, 68, 68, 0.22);
-  background: rgba(239, 68, 68, 0.04);
+
 }
 
 .sp-detail__cancel-row {
@@ -402,4 +402,100 @@
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* -------------------------------------------------
+   Items group (detail page)
+-------------------------------------------------- */
+
+.sp-itemgroup {
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  background: var(--sp-bg);
+  padding: 14px;
+}
+
+.sp-itemgroup__head {
+  margin-bottom: 10px;
+}
+
+.sp-itemgroup__title {
+  font-size: 24px;
+  font-weight: 950;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.sp-itemgroup__sub {
+  margin: 6px 0 0;
+  color: var(--sp-muted);
+  font-weight: 650;
+}
+
+.sp-itemgroup__body {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-gap-12);
+}
+
+/* inner “line” card inside the group */
+.sp-itemgroup .sp-line,
+.sp-itemgroup .sp-line--detail {
+  border-radius: 18px;
+  padding: 14px;
+  border-color: rgba(229, 231, 235, 0.9);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+/* action button under the line (Make changes…) */
+.sp-itemgroup__actions {
+  margin-top: 12px;
+}
+
+.sp-itemgroup__actions .sp-btn {
+  width: 100%;
+  justify-content: space-between;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+/* caret alignment (if your markup uses an icon span) */
+.sp-itemgroup__caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10px;
+}
+
+/* mobile tighten */
+@media (max-width: 480px) {
+  .sp-itemgroup {
+    padding: 12px;
+  }
+  .sp-itemgroup__title {
+    font-size: 22px;
+  }
+  .sp-itemgroup .sp-line,
+  .sp-itemgroup .sp-line--detail {
+    padding: 12px;
+  }
+}
+
+.sp-btn.sp-disclosurebtn {
+    width: 100%;
+    margin-top: 10px;
+    background: #fafafa;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sp-itemopt__desc {
+    font-weight: 400;
+    font-size: 15px;
+    margin-top: 5px;
+}
+
+.sp-line__panel {
+    margin-top: 5px;
 }

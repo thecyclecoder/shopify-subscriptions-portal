@@ -1,0 +1,152 @@
+/* ---------------- Cancel screen (reason step) ---------------- */
+
+/* ---------------- Cancel screen layout fixes ---------------- */
+
+.sp-cancel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.sp-cancel__back {
+  align-self: flex-start;
+}
+
+.sp-cancel__title {
+  margin: 0;
+}
+
+/* Intro blocks */
+.sp-cancel__intro {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+/* Reason tiles: 1 col mobile, 2 col desktop */
+.sp-cancel__reasons {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+/* Tablet/desktop */
+@media (min-width: 900px) {
+  .sp-cancel__reasons {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Make the tiles fill height nicely in grid */
+.sp-cancel__reasons .sp-itemopt {
+  width: 100%;
+  height: 100%;
+}
+
+/* Alert styling stays as before */
+.sp-cancel__alert {
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.sp-cancel__alert-title {
+  font-weight: 800;
+  color: #b91c1c;
+}
+
+.sp-cancel__alert-sub {
+  margin-top: 4px;
+  color: #7f1d1d;
+}
+
+.sp-cancel .sp-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.sp-cancel__intro {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.sp-cancel__required-title {
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.sp-cancel__required-sub {
+  margin-top: 6px;
+}
+
+.sp-cancel__alert {
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(220, 38, 38, 0.25); /* red-600-ish */
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.sp-cancel__alert-title {
+  font-weight: 800;
+  color: #b91c1c; /* red-700 */
+}
+
+.sp-cancel__alert-sub {
+  margin-top: 4px;
+  color: #7f1d1d; /* red-900-ish */
+}
+
+.sp-cancel__reasons {
+  margin-top: 14px;
+}
+
+.sp-cancel__footer {
+  margin-top: 14px;
+}
+
+.sp-cancel__exit {
+  display: inline-block;
+}
+
+/* Light panel behind cancel reasons */
+.sp-cancel__reasons-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Reduce alert impact */
+.sp-cancel__alert {
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  background: rgba(220, 38, 38, 0.04);
+}
+
+.sp-cancel__alert-title {
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.2;
+  color: #b91c1c;
+}
+
+.sp-cancel__alert-sub {
+  margin-top: 4px;
+  font-size: 16px;
+  line-height: 1.35;
+  color: rgba(127, 29, 29, 0.9);
+}
+
+/* Tighten intro spacing slightly */
+.sp-cancel__intro {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}

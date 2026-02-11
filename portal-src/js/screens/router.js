@@ -77,8 +77,18 @@
     if (path === base) return safeRender("home");
     if (path.indexOf(base + "/subscriptions") === 0) return safeRender("subscriptions");
 
-    // Detail page is always base + "/subscription" (querystring is ignored by pathname)
-    if (path === base + "/subscription") return safeRender("subscriptionDetail");
+     // Detail page is always base + "/subscription"
+    // We also allow "intent" to select sub-screens without changing pathname.
+    if (path === base + "/subscription") {
+      var intent = "";
+      try {
+        var sp = new URLSearchParams(window.location.search || "");
+        intent = String(sp.get("intent") || "").trim().toLowerCase();
+      } catch (e) {}
+
+      if (intent === "cancel") return safeRender("cancel");
+      return safeRender("subscriptionDetail");
+    }
 
     if (window.__SP.ui) {
       window.__SP.ui.setRoot(

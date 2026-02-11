@@ -177,9 +177,9 @@ body.sp-modal-open {
 
 /* Inner layout */
 .sp-addswap-rowbtn__inner {
-  display: flex;
+  display: block;
   gap: var(--sp-gap-12, 12px);
-  padding: 12px;
+  padding: 0;
 }
 
 /* -------------------------
@@ -191,13 +191,14 @@ body.sp-modal-open {
 }
 
 .sp-addswap-prodrow__img {
-  width: 56px;
-  height: 56px;
+  width: 100%;
+  height: auto;
   border-radius: 14px;
   border: 1px solid var(--sp-border);
   object-fit: cover;
   flex: 0 0 auto;
   background: #fff;
+  margin-bottom: 10px;
 }
 
 .sp-addswap-prodrow__img--placeholder {
@@ -208,17 +209,18 @@ body.sp-modal-open {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .sp-addswap-prodrow__title {
   font-weight: 950;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.15;
 }
 
 .sp-addswap-prodrow__headline {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 400;
   margin-top: 4px;
   line-height: 1.25;
 }
@@ -236,6 +238,7 @@ body.sp-modal-open {
   align-items: center;
   gap: 8px;
   margin-top: 6px;
+  justify-content: center;
 }
 
 .sp-addswap-stars__glyphs {
@@ -283,7 +286,7 @@ body.sp-modal-open {
   border-radius: 16px;
   padding: 12px;
 
-  display: flex;
+  display: block;
   gap: var(--sp-gap-12, 12px);
   align-items: flex-start;
 
@@ -291,8 +294,8 @@ body.sp-modal-open {
 }
 
 .sp-addswap-selected__img {
-  width: 56px;
-  height: 56px;
+  width: 100%;
+  height: auto;
   border-radius: 14px;
   border: 1px solid var(--sp-border);
   object-fit: cover;
@@ -306,6 +309,7 @@ body.sp-modal-open {
 
 .sp-addswap-selected__text {
   min-width: 0;
+  text-align: center;
 }
 
 .sp-addswap-selected__title {
@@ -315,8 +319,8 @@ body.sp-modal-open {
 }
 
 .sp-addswap-selected__headline {
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 17px;
+  font-weight: 400;
   margin-top: 4px;
   line-height: 1.25;
 }
@@ -406,18 +410,17 @@ body.sp-modal-open {
 @media (max-width: 420px) {
   .sp-addswap-prodrow__img,
   .sp-addswap-selected__img {
-    width: 52px;
-    height: 52px;
+
     border-radius: 13px;
   }
 
   .sp-addswap-prodrow__title,
   .sp-addswap-selected__title {
-    font-size: 17px;
+    font-size: 19px;
   }
 
   .sp-addswap-prodrow__headline {
-    font-size: 13.5px;
+    font-size: 17px;
   }
 
   .sp-addswap-prodrow__subhead {
@@ -437,7 +440,7 @@ body.sp-modal-open {
 
 .sp-prodrow__img {
   width: 100%;
-  height: 150px;
+  height: auto;
   border-radius: 16px;
   object-fit: cover;
   border: 1px solid var(--sp-border);
@@ -459,4 +462,108 @@ body.sp-modal-open {
 .sp-prodcard.is-selected {
   border-color: var(--sp-text);
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
+}
+
+/* Step 1 product cards: centered "Select" visual cue over image */
+.sp-addswap-prodrow__imgwrap {
+  position: relative;
+  display: block;
+}
+
+/* The cue itself */
+.sp-addswap-prodrow__selectcue {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+
+  pointer-events: none; /* IMPORTANT: card is still clickable anywhere */
+  user-select: none;
+
+  padding: 10px 16px;
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  backdrop-filter: blur(6px);
+
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: rgba(0, 0, 0, 0.78);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+
+  opacity: 0.92;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+/* Slightly stronger on hover/focus to reinforce clickability */
+.sp-addswap-rowbtn:hover .sp-addswap-prodrow__selectcue,
+.sp-addswap-rowbtn:focus-visible .sp-addswap-prodrow__selectcue {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.02);
+}
+
+/* Step 1 "Select" overlay cue */
+.sp-addswap-prodrow__imgwrap{
+  position: relative;
+}
+
+.sp-addswap-prodrow__selectcue{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none; /* purely visual; card still clickable */
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(255,255,255,0.35);
+  backdrop-filter: blur(6px);
+}
+
+/* Footer: make Submit visually primary (even if theme styles change) */
+.sp-addswap-submit{
+  /* keep minimal overrides; your theme may already style .sp-btn-primary */
+  min-width: 140px;
+}
+
+/* Price styling */
+.sp-addswap-price__msrp{
+  text-decoration: line-through;
+  opacity: 0.65;
+  margin-right: 10px;
+}
+
+.sp-addswap-price__now{
+  font-weight: 700;
+}
+
+.sp-addswap-price__note{
+  margin-top: 6px;
+  font-size: 12px;
+  display: none;
+}
+
+/* Modal footer: support 3 buttons on mobile */
+.sp-modal__footer {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;         /* ✅ allow 3rd button to wrap */
+  justify-content: center; /* nicer on mobile */
+}
+
+.sp-modal__footer .sp-btn {
+  flex: 1 1 140px;         /* ✅ buttons take equal width, wrap if needed */
+  min-width: 120px;        /* prevents too-tiny */
+}
+
+.sp-modal__footer .sp-remove-cancel {
+  flex-basis: 100%;
 }

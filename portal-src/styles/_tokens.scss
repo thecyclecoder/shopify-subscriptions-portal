@@ -22,7 +22,17 @@
   /* Spacing */
   --sp-pad: 18px;
 
-  /* Common surfaces (avoid repeating hex all over) */
+  /* Gaps (layout rhythm) */
+  --sp-gap-4: 4px;
+  --sp-gap-6: 6px;
+  --sp-gap-8: 8px;
+  --sp-gap-10: 10px;
+  --sp-gap-12: 12px;
+  --sp-gap-16: 16px;
+  --sp-gap-18: 18px;
+  --sp-gap-24: 24px;
+
+  /* Common surfaces */
   --sp-surface: #ffffff;
   --sp-surface-muted: #f9fafb;
   --sp-surface-soft: #f3f4f6;
@@ -31,7 +41,7 @@
   --sp-overlay: rgba(0, 0, 0, 0.45);
   --sp-overlay-strong: rgba(17, 24, 39, 0.55);
 
-  /* Accents (status/pills) */
+  /* Accents (status / pills) */
   --sp-success-bg: #dcfce7;
   --sp-success-text: #166534;
 
@@ -56,12 +66,20 @@
   --sp-ease: ease;
   --sp-dur-fast: 0.08s;
   --sp-dur: 0.12s;
-}
 
-/* Optional: future-proof small-screen token tweaks here (if needed)
-@media (max-width: 480px) {
-  :root {
-    --sp-pad: 16px;
-  }
+  /* -------------------------------------------------
+     Button tokens (referenced throughout components)
+  -------------------------------------------------- */
+  --sp-btn-font-size: 18px;
+  --sp-btn-pad-y: 14px;
+  --sp-btn-pad-x: 14px;
+
+  --sp-btn-font-size-ghost: 16px;
+  --sp-ghost-bg: #f9fafb;
+
+  /* Mobile button tokens */
+  --sp-btn-font-size-mobile: 17px;
+  --sp-btn-pad-y-mobile: 13px;
+  --sp-btn-pad-x-mobile: 14px;
+  --sp-btn-radius-mobile: 16px;
 }
-*/

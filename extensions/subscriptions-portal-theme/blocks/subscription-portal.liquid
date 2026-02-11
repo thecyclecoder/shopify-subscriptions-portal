@@ -25,6 +25,13 @@
         "handle": {{ p.handle | json }},
         "title": {{ p.title | json }},
 
+        "currencyCode": {{ shop.currency | json }},
+
+        "price_min": {{ p.price_min | money_without_currency | json }},
+        "price_max": {{ p.price_max | money_without_currency | json }},
+        "compare_at_price_min": {{ p.compare_at_price_min | money_without_currency | json }},
+        "compare_at_price_max": {{ p.compare_at_price_max | money_without_currency | json }},
+
         "image": {
           {%- if p.featured_image -%}
             "src": {{ p.featured_image | image_url: width: 320 | json }},
@@ -43,7 +50,7 @@
         "rating": {
           "value": {{ p.metafields.reviews.rating.value.rating | default: 0 | json }},
           "scale_max": {{ p.metafields.reviews.rating.value.scale_max | default: 5 | json }},
-          "count": {{ p.metafields.reviews.rating_count | default: 0 | plus: 10107 | times: 100.0  | money_without_currency | remove: '.00' | json }}
+          "count": {{ p.metafields.reviews.rating_count | default: 0 | plus: 10107 | times: 100.0  | money_without_currency | remove: ".00" | json }}
         },
 
         "variants": [
@@ -54,6 +61,14 @@
               {
                 "id": {{ v.id | json }},
                 "title": {{ v.title | json }},
+
+                "currencyCode": {{ shop.currency | json }},
+
+                "price": {{ v.price | money_without_currency | json }},
+                "compare_at_price": {{ v.compare_at_price | money_without_currency | json }},
+
+                "price_cents": {{ v.price | json }},
+                "compare_at_price_cents": {{ v.compare_at_price | json }},
 
                 "image": {
                   {%- if v.image -%}
@@ -103,7 +118,11 @@
     data-email="{{ customer.email | escape }}"
   {% endif %}
 >
-  {{ 'portal.min.css' | asset_url | stylesheet_tag }}
+  
+  {{ 'portal.min.css'
+  | asset_url
+  | stylesheet_tag
+}}
 
   {% if block.settings.heading != blank %}
     <div class="app-title-wrapper">

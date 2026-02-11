@@ -203,6 +203,13 @@
     var cfg = getConfig();
     var contractId = getContractIdFromUrl();
 
+        // URLs for cancel flow + always-available exit back to details
+    var pathname = "";
+    try { pathname = String(window.location.pathname || ""); } catch (e) { pathname = ""; }
+
+    var detailUrl = pathname + "?id=" + encodeURIComponent(String(contractId || ""));
+    var cancelUrl = detailUrl + "&intent=cancel";
+
     if (!contractId) {
       ui.setRoot(
         ui.el("div", { class: "sp-wrap sp-grid" }, [
@@ -358,7 +365,6 @@
     };
 
     
-// Build one shared ctx object for all cards
 var cardCtx = Object.assign(
   {
     contract: contract,
@@ -366,10 +372,15 @@ var cardCtx = Object.assign(
     actions: actions,
     isReadOnly: isReadOnly,
     bucket: bucket,
+
     // handy extras for some cards
     linesAll: linesAll,
     shipLine: shipLine,
     lines: lines,
+
+    // cancel flow navigation helpers
+    detailUrl: detailUrl,
+    cancelUrl: cancelUrl,
   },
   commonOpts || {}
 );
@@ -417,9 +428,13 @@ var cardCtx = Object.assign(
     safeCardRender("reviews", ui, cardCtx) ||
     placeholderCard(ui, "Reviews", "What customers are saying.");
 
-  var cancelCardEl =
-    safeCardRender("cancel", ui, cardCtx) ||
-    placeholderCard(ui, "Cancel subscription", "We’ll ask a couple quick questions first.");
+  // Cancel card: do NOT show during lock windows (7-day lock OR portal lock)
+  var cancelCardEl = null;
+  if (!isReadOnly && bucket !== "cancelled") {
+    cancelCardEl =
+      safeCardRender("cancel", ui, Object.assign({}, cardCtx, { canCancel: true })) ||
+      placeholderCard(ui, "Cancel subscription", "We’ll ask a couple quick questions first.");
+  }
 
     // Layout
     var main = ui.el("div", { class: "sp-wrap sp-detail" }, [header]);
