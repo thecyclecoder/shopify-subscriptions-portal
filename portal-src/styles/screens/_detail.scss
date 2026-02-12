@@ -164,7 +164,7 @@
   align-items: flex-end;
   justify-content: center;
   gap: 2px;
-  min-width: 86px;
+  min-width: 70px;
   flex: 0 0 auto;
 }
 
@@ -365,14 +365,43 @@
   font-size: 14px;
   font-weight: 650;
 }
+/* You Save Row */
+.sp-items-total__row--save {
+  background: #f4f7f6; /* very light grey-green tint */
+  border: 1px solid #e3ebe8;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 12px;
+}
 
+.sp-items-total__row--save .sp-items-total__label {
+  font-weight: 600;
+  color: #2f3a37;
+}
+
+.sp-items-total__row--save .sp-items-total__now {
+  font-weight: 700;
+  color: #1f2d2a;
+  letter-spacing: 0.2px;
+}
+.sp-items-total__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px; // adjust as needed
+}
+/* FREE Shipping */
+.sp-items-total__free {
+  font-weight: 600;
+  color: #1a9271;
+  letter-spacing: 0.3px;
+}
 /* ------------------------------------------------------------
    Cancel card
    ------------------------------------------------------------ */
 
 .sp-detail__cancel {
   border: 1px solid rgba(239, 68, 68, 0.22);
-
 }
 
 .sp-detail__cancel-row {
@@ -442,10 +471,13 @@
 /* inner “line” card inside the group */
 .sp-itemgroup .sp-line,
 .sp-itemgroup .sp-line--detail {
-  border-radius: 18px;
-  padding: 14px;
-  border-color: rgba(229, 231, 235, 0.9);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  // border-radius: 18px;
+  // padding: 14px;
+  // border-color: rgba(229, 231, 235, 0.9);
+  // box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  border: none;
+  border-radius: 0px;
+  padding: 0;
 }
 
 /* action button under the line (Make changes…) */
@@ -478,24 +510,24 @@
   }
   .sp-itemgroup .sp-line,
   .sp-itemgroup .sp-line--detail {
-    padding: 12px;
+    padding: 0px;
   }
 }
 
 .sp-btn.sp-disclosurebtn {
-    width: 100%;
-    margin-top: 10px;
-    background: #fafafa;
-    justify-content: space-between;
-    align-items: center;
+  width: 100%;
+  margin-top: 10px;
+  background: #fafafa;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .sp-itemopt__desc {
-    font-weight: 400;
-    font-size: 15px;
-    margin-top: 5px;
+  font-weight: 400;
+  font-size: 15px;
+  margin-top: 5px;
 }
 
 .sp-line__panel {
-    margin-top: 5px;
+  margin-top: 5px;
 }

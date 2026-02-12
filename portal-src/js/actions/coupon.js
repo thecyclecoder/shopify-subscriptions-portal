@@ -1,29 +1,28 @@
-// /actions/coupon.js
 (function () {
   window.__SP = window.__SP || {};
   window.__SP.actions = window.__SP.actions || {};
   window.__SP.actions.coupon = window.__SP.actions.coupon || {};
 
-  var SUBS_CACHE_KEY = "__sp_subscriptions_cache_v2";
+  var SUBS_CACHE_KEY = '__sp_subscriptions_cache_v2';
 
   // 2-minute "failed code" memory to prevent spam submits
-  var FAILED_CODES_KEY = "__sp_coupon_failed_codes_v1";
+  var FAILED_CODES_KEY = '__sp_coupon_failed_codes_v1';
   var FAILED_TTL_MS = 2 * 60 * 1000;
 
   function shortId(gid) {
-    var s = String(gid || "");
-    if (!s) return "";
-    var parts = s.split("/");
+    var s = String(gid || '');
+    if (!s) return '';
+    var parts = s.split('/');
     return parts[parts.length - 1] || s;
   }
 
   function s(v) {
-    return typeof v === "string" ? v.trim() : "";
+    return typeof v === 'string' ? v.trim() : '';
   }
 
   function toNum(v, fallback) {
     var n = Number(v);
-    return isFinite(n) ? n : (fallback == null ? 0 : fallback);
+    return isFinite(n) ? n : fallback == null ? 0 : fallback;
   }
 
   // ---- failed code memory --------------------------------------------------
@@ -34,9 +33,9 @@
       if (!raw) return { ts: Date.now(), items: {} };
 
       var obj = JSON.parse(raw);
-      if (!obj || typeof obj !== "object") return { ts: Date.now(), items: {} };
-      if (!obj.items || typeof obj.items !== "object") obj.items = {};
-      if (!obj.ts || typeof obj.ts !== "number") obj.ts = Date.now();
+      if (!obj || typeof obj !== 'object') return { ts: Date.now(), items: {} };
+      if (!obj.items || typeof obj.items !== 'object') obj.items = {};
+      if (!obj.ts || typeof obj.ts !== 'number') obj.ts = Date.now();
 
       // purge expired
       var now = Date.now();
@@ -44,7 +43,9 @@
       for (var code in items) {
         var exp = Number(items[code]);
         if (!isFinite(exp) || exp <= now) {
-          try { delete items[code]; } catch (_) {}
+          try {
+            delete items[code];
+          } catch (_) {}
         }
       }
 
@@ -69,7 +70,7 @@
     if (!code) return false;
     var obj = readFailedCodes();
     var exp = obj.items && obj.items[code];
-    return typeof exp === "number" && exp > Date.now();
+    return typeof exp === 'number' && exp > Date.now();
   }
 
   function markFailed(code) {
@@ -85,7 +86,9 @@
     if (!code) return;
     var obj = readFailedCodes();
     if (obj.items && Object.prototype.hasOwnProperty.call(obj.items, code)) {
-      try { delete obj.items[code]; } catch (_) {}
+      try {
+        delete obj.items[code];
+      } catch (_) {}
       writeFailedCodes(obj);
     }
   }
@@ -93,9 +96,9 @@
   // ---- cache helpers (mirrors your patterns) ------------------------------
 
   function looksLikeSubsCacheEntry(entry) {
-    if (!entry || typeof entry !== "object") return false;
-    if (!entry.ts || typeof entry.ts !== "number") return false;
-    if (!entry.data || typeof entry.data !== "object") return false;
+    if (!entry || typeof entry !== 'object') return false;
+    if (!entry.ts || typeof entry.ts !== 'number') return false;
+    if (!entry.data || typeof entry.data !== 'object') return false;
     if (entry.data.ok !== true) return false;
     if (!Array.isArray(entry.data.contracts)) return false;
     return true;
@@ -179,8 +182,8 @@
   }
 
   function applyCouponPatchToContract(contract, patch) {
-    var base = (contract && typeof contract === "object") ? contract : {};
-    var p = (patch && typeof patch === "object") ? patch : {};
+    var base = contract && typeof contract === 'object' ? contract : {};
+    var p = patch && typeof patch === 'object' ? patch : {};
 
     var next = {};
     for (var k in base) next[k] = base[k];
@@ -191,7 +194,9 @@
     if (p.nextBillingDate != null) next.nextBillingDate = p.nextBillingDate;
 
     if (!next.updatedAt) {
-      try { next.updatedAt = new Date().toISOString(); } catch (_) {}
+      try {
+        next.updatedAt = new Date().toISOString();
+      } catch (_) {}
     }
     return next;
   }
@@ -199,19 +204,19 @@
   function patchContractInCache(contractGid, patch) {
     try {
       var entry = readSubsCacheEntry();
-      if (!entry) return { ok: false, error: "cache_missing" };
+      if (!entry) return { ok: false, error: 'cache_missing' };
 
       var idx = getContractIndexByGid(entry, contractGid);
-      if (idx < 0) return { ok: false, error: "contract_not_found_in_cache" };
+      if (idx < 0) return { ok: false, error: 'contract_not_found_in_cache' };
 
       var existing = entry.data.contracts[idx];
-      var base = (existing && typeof existing === "object") ? existing : { id: String(contractGid) };
+      var base = existing && typeof existing === 'object' ? existing : { id: String(contractGid) };
       var next = applyCouponPatchToContract(base, patch);
 
       entry.data.contracts[idx] = next;
 
       var wrote = writeSubsCacheEntry(entry);
-      if (!wrote) return { ok: false, error: "cache_write_failed" };
+      if (!wrote) return { ok: false, error: 'cache_write_failed' };
 
       return { ok: true, contract: next };
     } catch (e) {
@@ -225,7 +230,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptionDetail &&
-        typeof window.__SP.screens.subscriptionDetail.render === "function"
+        typeof window.__SP.screens.subscriptionDetail.render === 'function'
       ) {
         window.__SP.screens.subscriptionDetail.render();
         return;
@@ -237,7 +242,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptions &&
-        typeof window.__SP.screens.subscriptions.render === "function"
+        typeof window.__SP.screens.subscriptions.render === 'function'
       ) {
         window.__SP.screens.subscriptions.render();
         return;
@@ -251,48 +256,84 @@
     } catch (e) {}
 
     try {
-      var root = document.querySelector(".subscriptions-portal");
-      var v = root && (root.getAttribute("data-shop") || root.getAttribute("data-shop-domain") || "");
+      var root = document.querySelector('.subscriptions-portal');
+      var v =
+        root && (root.getAttribute('data-shop') || root.getAttribute('data-shop-domain') || '');
       v = s(v);
-      return v || "";
+      return v || '';
     } catch (e2) {}
 
     try {
-      var qs = new URLSearchParams(String(location && location.search ? location.search : ""));
-      var q = s(qs.get("shop"));
-      return q || "";
+      var qs = new URLSearchParams(String(location && location.search ? location.search : ''));
+      var q = s(qs.get('shop'));
+      return q || '';
     } catch (e3) {}
 
-    return "";
+    return '';
   }
 
   function toastForCouponError(code) {
     // More final-sounding messages, less “please try again”
-    if (code === "coupon_invalid_or_expired" || code === "coupon_not_found") {
-      return "Invalid or expired coupon code. Please double-check and try a different code.";
+    if (code === 'coupon_invalid_or_expired' || code === 'coupon_not_found') {
+      return 'Invalid or expired coupon code. Please double-check and try a different code.';
     }
-    if (code === "coupon_conflict" || code === "coupon_already_applied") {
-      return "This subscription already has a coupon applied. Remove it first to apply a new one.";
+    if (code === 'coupon_conflict' || code === 'coupon_already_applied') {
+      return 'This subscription already has a coupon applied.';
     }
-    if (code === "coupon_apply_failed") {
-      return "That coupon can’t be applied to this subscription.";
+    if (code === 'coupon_apply_failed') {
+      return 'That coupon can’t be applied to this subscription.';
     }
-    if (code === "coupon_remove_failed" || code === "discount_not_removable") {
-      return "We couldn’t remove that discount from this subscription.";
+    if (code === 'coupon_remove_failed' || code === 'discount_not_removable') {
+      return 'We couldn’t remove that discount from this subscription.';
     }
-    return "We couldn’t apply that coupon to this subscription.";
+    return 'We couldn’t apply that coupon to this subscription.';
+  }
+
+  async function postCoupon(ui, payload, mode, discountCodeForFailMemory) {
+    var busy = window.__SP.actions && window.__SP.actions.busy;
+
+    var resp = await window.__SP.api.postJson('coupon', payload);
+
+    if (!resp || resp.ok === false) {
+      var serverCode = s(resp && resp.error);
+      if (!serverCode) serverCode = 'coupon_failed';
+
+      // Mark code as failed for 2 minutes only for "invalid-ish" apply errors
+      if (mode === 'apply' && discountCodeForFailMemory) {
+        if (
+          serverCode === 'coupon_invalid_or_expired' ||
+          serverCode === 'coupon_not_found' ||
+          serverCode === 'coupon_apply_failed'
+        ) {
+          markFailed(discountCodeForFailMemory);
+        }
+      }
+
+      var msg = toastForCouponError(serverCode);
+      try {
+        busy && busy.showToast(ui, msg, 'error');
+      } catch (_) {}
+      return { ok: false, error: serverCode, resp: resp };
+    }
+
+    // Success: clear any recorded failed memory for this code
+    if (mode === 'apply' && discountCodeForFailMemory) clearFailed(discountCodeForFailMemory);
+
+    return { ok: true, resp: resp };
   }
 
   var __inFlight = false;
 
   async function runCouponImpl(ui, input) {
     var busy = window.__SP.actions && window.__SP.actions.busy;
-    if (!busy) throw new Error("busy_not_loaded");
-    if (__inFlight) return { ok: false, error: "busy" };
+    if (!busy) throw new Error('busy_not_loaded');
+    if (__inFlight) return { ok: false, error: 'busy' };
 
     input = input || {};
     var outerMode = s(input.mode);
-    var busyMsg = outerMode === "remove" ? "Removing coupon…" : "Applying coupon…";
+
+    // If applying and there's an existing coupon, we will do a replace (remove then apply)
+    var busyMsg = outerMode === 'remove' ? 'Removing coupon…' : 'Applying coupon…';
 
     __inFlight = true;
 
@@ -302,110 +343,153 @@
         async function () {
           try {
             var mode = s(input.mode);
-            if (mode !== "apply" && mode !== "remove") throw new Error("invalid_mode");
+            if (mode !== 'apply' && mode !== 'remove') throw new Error('invalid_mode');
 
             var contractGid = input.contractId;
-            if (!contractGid) throw new Error("missing_contractId");
+            if (!contractGid) throw new Error('missing_contractId');
 
             var contractShortId = toNum(shortId(contractGid), 0);
-            if (!contractShortId) throw new Error("missing_contractId");
+            if (!contractShortId) throw new Error('missing_contractId');
 
             var contract = getContractFromCacheByGid(contractGid);
-            if (!contract) throw new Error("cache_missing_contract");
+            if (!contract) throw new Error('cache_missing_contract');
 
             var discounts = getDiscountNodes(contract);
             var hasExisting = discounts && discounts.length > 0;
 
-            // Guardrails
-            var discountCode = "";
-            if (mode === "apply") {
-              if (hasExisting) throw new Error("coupon_already_applied");
-              discountCode = s(input.discountCode);
-              if (!discountCode) throw new Error("missing_discountCode");
+            var shop = pickOptionalShop();
 
-              // Anti-spam: if we recently saw this code fail, block immediately
-              if (isRecentlyFailed(discountCode)) {
-                var msg0 = "Invalid or expired coupon code. Please try a different code.";
-                try { busy.showToast(ui, msg0, "error"); } catch (_) {}
-                return { ok: false, error: "coupon_recently_failed" };
-              }
-            } else {
-              // remove
+            // ---- REMOVE MODE ---------------------------------------------------
+            if (mode === 'remove') {
               if (!hasExisting) {
-                try { busy.showToast(ui, "Coupon removed.", "success"); } catch (_) {}
-                return { ok: true, contractId: contractShortId, patch: { discounts: contract.discounts } };
+                try {
+                  busy.showToast(ui, 'Coupon removed.', 'success');
+                } catch (_) {}
+                return {
+                  ok: true,
+                  contractId: contractShortId,
+                  patch: { discounts: contract.discounts },
+                };
               }
-            }
 
-            var payload = {
-              contractId: contractShortId,
-              mode: mode,
-            };
-
-            if (mode === "apply") {
-              payload.discountCode = discountCode;
-            } else {
               var did = s(input.discountId);
               if (!did) {
-                try { did = s(discounts[0] && discounts[0].id); } catch (_) {}
+                try {
+                  did = s(discounts[0] && discounts[0].id);
+                } catch (_) {}
               }
-              if (!did) throw new Error("missing_discountId");
-              payload.discountId = did;
-            }
+              if (!did) throw new Error('missing_discountId');
 
-            var shop = pickOptionalShop();
-            if (shop) payload.shop = shop;
+              var payloadR = { contractId: contractShortId, mode: 'remove', discountId: did };
+              if (shop) payloadR.shop = shop;
 
-            var resp = await window.__SP.api.postJson("coupon", payload);
+              var r0 = await postCoupon(ui, payloadR, 'remove', null);
+              if (!r0.ok) return { ok: false, error: r0.error };
 
-            if (!resp || resp.ok === false) {
-              // If server gave a known error code, use it. Otherwise generic.
-              var serverCode = s(resp && resp.error);
-              if (!serverCode) serverCode = "coupon_failed";
-
-              // Mark code as failed for 2 minutes only for "invalid-ish" apply errors
-              if (mode === "apply") {
-                if (
-                  serverCode === "coupon_invalid_or_expired" ||
-                  serverCode === "coupon_not_found" ||
-                  serverCode === "coupon_apply_failed"
-                ) {
-                  markFailed(discountCode);
-                }
+              var patchR =
+                r0.resp && r0.resp.patch && typeof r0.resp.patch === 'object' ? r0.resp.patch : {};
+              var resultR = patchContractInCache(contractGid, patchR);
+              if (!resultR.ok) {
+                try {
+                  console.warn('[coupon] cache patch failed:', resultR.error);
+                } catch (e1) {}
               }
 
-              var msg = toastForCouponError(serverCode);
-              try { busy.showToast(ui, msg, "error"); } catch (_) {}
-              return { ok: false, error: serverCode };
+              refreshCurrentScreen();
+              try {
+                busy.showToast(ui, 'Coupon removed.', 'success');
+              } catch (_) {}
+
+              return { ok: true, contract: resultR.contract || null, patch: patchR };
             }
 
-            // Success: clear any recorded failed memory for this code
-            if (mode === "apply" && discountCode) clearFailed(discountCode);
+            // ---- APPLY MODE (with auto-replace) -------------------------------
+            var discountCode = s(input.discountCode);
+            if (!discountCode) throw new Error('missing_discountCode');
 
-            var patch = (resp && resp.patch && typeof resp.patch === "object") ? resp.patch : {};
+            // Anti-spam: if we recently saw this code fail, block immediately
+            if (isRecentlyFailed(discountCode)) {
+              var msg0 = 'Invalid or expired coupon code. Please try a different code.';
+              try {
+                busy.showToast(ui, msg0, 'error');
+              } catch (_) {}
+              return { ok: false, error: 'coupon_recently_failed' };
+            }
 
-            var result = patchContractInCache(contractGid, patch);
-            if (!result.ok) {
-              try { console.warn("[coupon] cache patch failed:", result.error); } catch (e1) {}
+            // If there is an existing discount, remove it first, then apply new code.
+            // This eliminates the “remove it first” friction in the cancel flow.
+            if (hasExisting) {
+              // Update busy message if possible
+              try {
+                // Not all busy implementations support updating message; safe no-op.
+                if (typeof busy.setMessage === 'function') busy.setMessage('Updating coupon…');
+              } catch (_) {}
+
+              var existingId = '';
+              try {
+                existingId = s(discounts[0] && discounts[0].id);
+              } catch (_) {}
+              if (!existingId) throw new Error('missing_discountId');
+
+              var payloadRemove = {
+                contractId: contractShortId,
+                mode: 'remove',
+                discountId: existingId,
+              };
+              if (shop) payloadRemove.shop = shop;
+
+              var r1 = await postCoupon(ui, payloadRemove, 'remove', null);
+              if (!r1.ok) return { ok: false, error: r1.error };
+
+              var patch1 =
+                r1.resp && r1.resp.patch && typeof r1.resp.patch === 'object' ? r1.resp.patch : {};
+              var result1 = patchContractInCache(contractGid, patch1);
+              if (!result1.ok) {
+                try {
+                  console.warn('[coupon] cache patch failed:', result1.error);
+                } catch (e1a) {}
+              }
+
+              // refresh local contract reference for subsequent logic (optional)
+              contract = result1.contract || contract;
+            }
+
+            var payloadA = {
+              contractId: contractShortId,
+              mode: 'apply',
+              discountCode: discountCode,
+            };
+            if (shop) payloadA.shop = shop;
+
+            var r2 = await postCoupon(ui, payloadA, 'apply', discountCode);
+            if (!r2.ok) return { ok: false, error: r2.error };
+
+            var patchA =
+              r2.resp && r2.resp.patch && typeof r2.resp.patch === 'object' ? r2.resp.patch : {};
+            var resultA = patchContractInCache(contractGid, patchA);
+            if (!resultA.ok) {
+              try {
+                console.warn('[coupon] cache patch failed:', resultA.error);
+              } catch (e1b) {}
             }
 
             refreshCurrentScreen();
-
             try {
-              busy.showToast(ui, mode === "apply" ? "Coupon applied." : "Coupon removed.", "success");
+              busy.showToast(ui, 'Coupon applied.', 'success');
             } catch (_) {}
 
-            return { ok: true, contract: result.contract || null, patch: patch };
+            return { ok: true, contract: resultA.contract || null, patch: patchA };
           } catch (e) {
             var code = String(e && e.message ? e.message : e);
 
-            // Record missing/guardrail errors but don’t teach “spam retry”
             var msg = toastForCouponError(code);
-            if (code === "missing_discountCode") msg = "Enter a coupon code.";
-            if (code === "invalid_mode") msg = "Invalid request.";
-            if (code === "missing_contractId") msg = "Missing subscription ID.";
+            if (code === 'missing_discountCode') msg = 'Enter a coupon code.';
+            if (code === 'invalid_mode') msg = 'Invalid request.';
+            if (code === 'missing_contractId') msg = 'Missing subscription ID.';
 
-            try { busy.showToast(ui, msg, "error"); } catch (_) {}
+            try {
+              busy.showToast(ui, msg, 'error');
+            } catch (_) {}
             return { ok: false, error: code };
           }
         },
@@ -421,10 +505,14 @@
   };
 
   window.__SP.actions.coupon.apply = function (ui, contractGid, discountCode) {
-    return runCouponImpl(ui, { mode: "apply", contractId: contractGid, discountCode: discountCode });
+    return runCouponImpl(ui, {
+      mode: 'apply',
+      contractId: contractGid,
+      discountCode: discountCode,
+    });
   };
 
   window.__SP.actions.coupon.remove = function (ui, contractGid, discountId) {
-    return runCouponImpl(ui, { mode: "remove", contractId: contractGid, discountId: discountId });
+    return runCouponImpl(ui, { mode: 'remove', contractId: contractGid, discountId: discountId });
   };
 })();

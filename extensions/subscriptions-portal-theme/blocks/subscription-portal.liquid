@@ -117,6 +117,20 @@
     data-last-name="{{ customer.last_name | escape }}"
     data-email="{{ customer.email | escape }}"
   {% endif %}
+    data-cancel-images-json='{
+    "too_much_product": {{ block.settings.cancel_img_too_much_product | image_url: width: 800 | default: "" | json }},
+    "too_expensive": {{ block.settings.cancel_img_too_expensive | image_url: width: 800 | default: "" | json }},
+    "not_getting_results": {{ block.settings.cancel_img_not_getting_results | image_url: width: 800 | default: "" | json }},
+    "tired_of_flavor": {{ block.settings.cancel_img_tired_of_flavor | image_url: width: 800 | default: "" | json }},
+    "reached_goals": {{ block.settings.cancel_img_reached_goals | image_url: width: 800 | default: "" | json }},
+    "shipping_issues": {{ block.settings.cancel_img_shipping_issues | image_url: width: 800 | default: "" | json }}
+  }'
+  data-cancel-coupons-json='{
+  "pct10": {{ block.settings.cancel_coupon_pct10 | default: "" | json }},
+  "pct15": {{ block.settings.cancel_coupon_pct15 | default: "" | json }},
+  "pct20": {{ block.settings.cancel_coupon_pct20 | default: "" | json }},
+  "pct25": {{ block.settings.cancel_coupon_pct25 | default: "" | json }}
+}'
 >
   
   {{ 'portal.min.css'
@@ -279,7 +293,69 @@
       "id": "addons",
       "label": "One-time Add-ons (Mug, Mixer, Tumbler, etc.)",
       "limit": 50
-    }
+    },
+    {
+  "type": "header",
+  "content": "Cancel flow images"
+},
+{
+  "type": "image_picker",
+  "id": "cancel_img_too_much_product",
+  "label": "Cancel reason image – Too much product"
+},
+{
+  "type": "image_picker",
+  "id": "cancel_img_too_expensive",
+  "label": "Cancel reason image – Too expensive"
+},
+{
+  "type": "image_picker",
+  "id": "cancel_img_not_getting_results",
+  "label": "Cancel reason image – Not getting results"
+},
+{
+  "type": "image_picker",
+  "id": "cancel_img_tired_of_flavor",
+  "label": "Cancel reason image – Tired of the flavors"
+},
+{
+  "type": "image_picker",
+  "id": "cancel_img_reached_goals",
+  "label": "Cancel reason image – Reached my goals"
+},
+{
+  "type": "image_picker",
+  "id": "cancel_img_shipping_issues",
+  "label": "Cancel reason image – Shipping or delivery issues"
+},
+{
+  "type": "header",
+  "content": "Cancel Flow – Coupons"
+},
+{
+  "type": "text",
+  "id": "cancel_coupon_pct10",
+  "label": "Coupon code – 10% off next order",
+  "default": "L10-CF"
+},
+{
+  "type": "text",
+  "id": "cancel_coupon_pct15",
+  "label": "Coupon code – 15% off next order",
+  "default": "L15-CF"
+},
+{
+  "type": "text",
+  "id": "cancel_coupon_pct20",
+  "label": "Coupon code – 20% off next order",
+  "default": "L20-CF"
+},
+{
+  "type": "text",
+  "id": "cancel_coupon_pct25",
+  "label": "Coupon code – 25% off next order",
+  "default": "L25-CF"
+}
   ]
 }
 {% endschema %}

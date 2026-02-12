@@ -65,7 +65,12 @@ body.sp-modal-open {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-
+.sp-addswap-note .sp-note__title {
+  font-size: 16px;
+}
+.sp-addswap-note .sp-note__body {
+  font-size: 15px;
+}
 /* Hide scrollbars but keep scrolling */
 .sp-modal__body::-webkit-scrollbar {
   width: 0;
@@ -73,6 +78,11 @@ body.sp-modal-open {
 }
 .sp-modal__body {
   scrollbar-width: none; /* Firefox */
+}
+
+.sp-modal__body .sp-muted {
+  font-size: 17px;
+  line-height: 1.3;
 }
 
 /* Footer pinned */
@@ -410,7 +420,6 @@ body.sp-modal-open {
 @media (max-width: 420px) {
   .sp-addswap-prodrow__img,
   .sp-addswap-selected__img {
-
     border-radius: 13px;
   }
 
@@ -484,7 +493,7 @@ body.sp-modal-open {
   border-radius: 999px;
 
   background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(6px);
 
   font-weight: 700;
@@ -493,10 +502,12 @@ body.sp-modal-open {
   text-transform: uppercase;
 
   color: rgba(0, 0, 0, 0.78);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 
   opacity: 0.92;
-  transition: opacity 140ms ease, transform 140ms ease;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
 /* Slightly stronger on hover/focus to reinforce clickability */
@@ -507,11 +518,11 @@ body.sp-modal-open {
 }
 
 /* Step 1 "Select" overlay cue */
-.sp-addswap-prodrow__imgwrap{
+.sp-addswap-prodrow__imgwrap {
   position: relative;
 }
 
-.sp-addswap-prodrow__selectcue{
+.sp-addswap-prodrow__selectcue {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -519,33 +530,33 @@ body.sp-modal-open {
   pointer-events: none; /* purely visual; card still clickable */
   padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.2px;
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(6px);
 }
 
 /* Footer: make Submit visually primary (even if theme styles change) */
-.sp-addswap-submit{
+.sp-addswap-submit {
   /* keep minimal overrides; your theme may already style .sp-btn-primary */
   min-width: 140px;
 }
 
 /* Price styling */
-.sp-addswap-price__msrp{
+.sp-addswap-price__msrp {
   text-decoration: line-through;
   opacity: 0.65;
   margin-right: 10px;
 }
 
-.sp-addswap-price__now{
+.sp-addswap-price__now {
   font-weight: 700;
 }
 
-.sp-addswap-price__note{
+.sp-addswap-price__note {
   margin-top: 6px;
   font-size: 12px;
   display: none;
@@ -555,13 +566,13 @@ body.sp-modal-open {
 .sp-modal__footer {
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;         /* ✅ allow 3rd button to wrap */
+  flex-wrap: wrap; /* ✅ allow 3rd button to wrap */
   justify-content: center; /* nicer on mobile */
 }
 
 .sp-modal__footer .sp-btn {
-  flex: 1 1 140px;         /* ✅ buttons take equal width, wrap if needed */
-  min-width: 120px;        /* prevents too-tiny */
+  flex: 1 1 140px; /* ✅ buttons take equal width, wrap if needed */
+  min-width: 120px; /* prevents too-tiny */
 }
 
 .sp-modal__footer .sp-remove-cancel {
