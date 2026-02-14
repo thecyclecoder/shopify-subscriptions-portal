@@ -326,7 +326,8 @@
         refreshCurrentScreen();
 
         busy.showToast(ui, 'Your subscription has been cancelled.', 'success');
-
+        trackAction('cancel', { status: 'success' });
+        trackActionResult('cancel', true);
         return { ok: true, contract: result.contract || null };
       } catch (e) {
         busy.showToast(
