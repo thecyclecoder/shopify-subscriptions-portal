@@ -4,7 +4,8 @@
 import './core/utils.js';
 import './core/ui.js';
 import './core/api.js';
-
+// Analytics (registered onto window.__SP.analytics)
+import './assets/analytics.js';
 // Cards (registered onto window.__SP.cards)
 import './cards/shipping-protection.js';
 import './cards/pause.js';
@@ -15,13 +16,14 @@ import './cards/rewards.js';
 import './cards/frequency.js';
 import './cards/items.js';
 import './cards/addons.js';
-import './cards/reviews.js';
 import './cards/cancel.js';
+import './cards/reviews.js';
 
 // Modals (registered onto window.__SP.modals)
 import './modals/add-swap.js';
 import './modals/remove.js';
 import './modals/quantity.js';
+import './modals/review.js';
 
 // Actions (registered onto window.__SP.actions)
 import './actions/busy.js';
@@ -35,6 +37,9 @@ import './actions/add-swap.js';
 import './actions/remove.js';
 import './actions/quantity.js';
 import './actions/cancel.js';
+
+// Data (registered onto window.__SP.data)
+import './data/reviews.js';
 
 // Screens (registered onto window.__SP.screens)
 import './screens/home.js';

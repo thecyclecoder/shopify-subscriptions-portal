@@ -18,18 +18,44 @@
   // 6) Sync in-memory state + re-render
   // -----------------------------------------------------------------------------
 
-  var SUBS_CACHE_KEY = "__sp_subscriptions_cache_v2";
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function trackAction(actionName, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.portalAction !== 'function') return;
+      a.portalAction(actionName, extra || {});
+    } catch (e) {}
+  }
+
+  function trackActionResult(actionName, ok, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+      a.send(
+        'portal_action_result',
+        Object.assign(
+          { action: String(actionName || ''), status: ok ? 'success' : 'error' },
+          extra || {}
+        )
+      );
+    } catch (e) {}
+  }
+
+  var SUBS_CACHE_KEY = '__sp_subscriptions_cache_v2';
   var __inFlight = false;
 
   function shortId(gid) {
-    var s = String(gid || "");
-    if (!s) return "";
-    var parts = s.split("/");
+    var s = String(gid || '');
+    if (!s) return '';
+    var parts = s.split('/');
     return parts[parts.length - 1] || s;
   }
 
   function toStr(v) {
-    return typeof v === "string" ? v : v == null ? "" : String(v);
+    return typeof v === 'string' ? v : v == null ? '' : String(v);
   }
 
   function toNum(v, fallback) {
@@ -39,15 +65,15 @@
 
   function toInt(v, fallback) {
     var n = Number(v);
-    return Number.isFinite(n) ? Math.trunc(n) : (fallback == null ? 0 : fallback);
+    return Number.isFinite(n) ? Math.trunc(n) : fallback == null ? 0 : fallback;
   }
 
   // ---- cache helpers (mirrors toggle-shipping-protection.js pattern) --------
 
   function looksLikeSubsCacheEntry(entry) {
-    if (!entry || typeof entry !== "object") return false;
-    if (!entry.ts || typeof entry.ts !== "number") return false;
-    if (!entry.data || typeof entry.data !== "object") return false;
+    if (!entry || typeof entry !== 'object') return false;
+    if (!entry.ts || typeof entry.ts !== 'number') return false;
+    if (!entry.data || typeof entry.data !== 'object') return false;
     if (entry.data.ok !== true) return false;
     if (!Array.isArray(entry.data.contracts)) return false;
     return true;
@@ -116,7 +142,7 @@
 
   function isLinesConnectionShape(lines) {
     try {
-      return !!(lines && typeof lines === "object" && Array.isArray(lines.nodes));
+      return !!(lines && typeof lines === 'object' && Array.isArray(lines.nodes));
     } catch (e) {
       return false;
     }
@@ -132,26 +158,29 @@
       var nextConn = {};
       for (var k in baseLines) nextConn[k] = baseLines[k];
       nextConn.nodes = patchArr;
-      if (!nextConn.__typename) nextConn.__typename = "SubscriptionLineConnection";
+      if (!nextConn.__typename) nextConn.__typename = 'SubscriptionLineConnection';
       return nextConn;
     }
 
     return {
-      __typename: "SubscriptionLineConnection",
+      __typename: 'SubscriptionLineConnection',
       nodes: patchArr,
-      pageInfo: (baseLines && baseLines.pageInfo) ? baseLines.pageInfo : {
-        __typename: "PageInfo",
-        hasPreviousPage: false,
-        hasNextPage: false,
-        startCursor: null,
-        endCursor: null
-      }
+      pageInfo:
+        baseLines && baseLines.pageInfo
+          ? baseLines.pageInfo
+          : {
+              __typename: 'PageInfo',
+              hasPreviousPage: false,
+              hasNextPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
     };
   }
 
   function applyLinesPatchToContract(contract, patch) {
-    var base = contract && typeof contract === "object" ? contract : {};
-    var p = patch && typeof patch === "object" ? patch : {};
+    var base = contract && typeof contract === 'object' ? contract : {};
+    var p = patch && typeof patch === 'object' ? patch : {};
 
     var next = {};
     for (var k in base) next[k] = base[k];
@@ -164,7 +193,9 @@
     if (p.updatedAt) next.updatedAt = p.updatedAt;
 
     if (!next.updatedAt) {
-      try { next.updatedAt = new Date().toISOString(); } catch (e) {}
+      try {
+        next.updatedAt = new Date().toISOString();
+      } catch (e) {}
     }
 
     return next;
@@ -173,19 +204,19 @@
   function patchContractInCache(contractGid, patch) {
     try {
       var entry = readSubsCacheEntry();
-      if (!entry) return { ok: false, error: "cache_missing" };
+      if (!entry) return { ok: false, error: 'cache_missing' };
 
       var idx = getContractIndexByGid(entry, contractGid);
-      if (idx < 0) return { ok: false, error: "contract_not_found_in_cache" };
+      if (idx < 0) return { ok: false, error: 'contract_not_found_in_cache' };
 
       var existing = entry.data.contracts[idx];
-      var base = existing && typeof existing === "object" ? existing : { id: String(contractGid) };
+      var base = existing && typeof existing === 'object' ? existing : { id: String(contractGid) };
       var next = applyLinesPatchToContract(base, patch);
 
       entry.data.contracts[idx] = next;
 
       var wrote = writeSubsCacheEntry(entry);
-      if (!wrote) return { ok: false, error: "cache_write_failed" };
+      if (!wrote) return { ok: false, error: 'cache_write_failed' };
 
       return { ok: true, contract: next };
     } catch (e) {
@@ -197,11 +228,11 @@
 
   function getCurrentRouteName() {
     try {
-      var sp = new URLSearchParams(window.location.search || "");
-      var r = String(sp.get("route") || "").trim();
-      return r || "";
+      var sp = new URLSearchParams(window.location.search || '');
+      var r = String(sp.get('route') || '').trim();
+      return r || '';
     } catch (e) {
-      return "";
+      return '';
     }
   }
 
@@ -210,18 +241,18 @@
       if (!window.__SP) return;
 
       var st = window.__SP.state;
-      if (!st || typeof st !== "object") return;
+      if (!st || typeof st !== 'object') return;
 
       var stId =
         st.currentContractId ||
         st.contractId ||
         (st.contract && st.contract.id) ||
         (st.currentContract && st.currentContract.id) ||
-        "";
+        '';
 
       if (String(shortId(stId)) !== String(shortId(contractGid))) return;
 
-      if (nextContract && typeof nextContract === "object") {
+      if (nextContract && typeof nextContract === 'object') {
         if (st.currentContract) st.currentContract = nextContract;
         if (st.contract) st.contract = nextContract;
 
@@ -234,14 +265,14 @@
   function refreshCurrentScreen(contractGid) {
     try {
       window.dispatchEvent(
-        new CustomEvent("__sp:contract-updated", {
-          detail: { contractGid: String(contractGid || ""), ts: Date.now() },
+        new CustomEvent('__sp:contract-updated', {
+          detail: { contractGid: String(contractGid || ''), ts: Date.now() },
         })
       );
     } catch (e) {}
 
     try {
-      if (window.__SP && typeof window.__SP.renderCurrentScreen === "function") {
+      if (window.__SP && typeof window.__SP.renderCurrentScreen === 'function') {
         window.__SP.renderCurrentScreen();
         return;
       }
@@ -254,18 +285,18 @@
         var screens = window.__SP.screens;
 
         if (
-          (route === "subscriptionDetail" || route === "subscription_detail") &&
+          (route === 'subscriptionDetail' || route === 'subscription_detail') &&
           screens.subscriptionDetail &&
-          typeof screens.subscriptionDetail.render === "function"
+          typeof screens.subscriptionDetail.render === 'function'
         ) {
           screens.subscriptionDetail.render();
           return;
         }
 
         if (
-          (route === "subscriptions" || route === "subscriptions_list") &&
+          (route === 'subscriptions' || route === 'subscriptions_list') &&
           screens.subscriptions &&
-          typeof screens.subscriptions.render === "function"
+          typeof screens.subscriptions.render === 'function'
         ) {
           screens.subscriptions.render();
           return;
@@ -278,7 +309,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptionDetail &&
-        typeof window.__SP.screens.subscriptionDetail.render === "function"
+        typeof window.__SP.screens.subscriptionDetail.render === 'function'
       ) {
         window.__SP.screens.subscriptionDetail.render();
         return;
@@ -290,7 +321,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptions &&
-        typeof window.__SP.screens.subscriptions.render === "function"
+        typeof window.__SP.screens.subscriptions.render === 'function'
       ) {
         window.__SP.screens.subscriptions.render();
         return;
@@ -301,10 +332,14 @@
   // ---- main submitter -------------------------------------------------------
 
   async function submitAddSwapImpl(ui, payload) {
+    var mode0 = toStr(payload && payload.mode).toLowerCase() === 'swap' ? 'swap' : 'add';
+    var actionName = mode0 === 'swap' ? 'swap_item' : 'add_item';
+
     var busy = window.__SP.actions && window.__SP.actions.busy;
-    if (!busy) throw new Error("busy_not_loaded");
-    if (!window.__SP.api || typeof window.__SP.api.postJson !== "function") throw new Error("api_not_loaded");
-    if (__inFlight) return { ok: false, error: "busy" };
+    if (!busy) throw new Error('busy_not_loaded');
+    if (!window.__SP.api || typeof window.__SP.api.postJson !== 'function')
+      throw new Error('api_not_loaded');
+    if (__inFlight) return { ok: false, error: 'busy' };
 
     __inFlight = true;
 
@@ -313,23 +348,24 @@
         ui,
         async function () {
           try {
-            var mode = (toStr(payload && payload.mode).toLowerCase() === "swap") ? "swap" : "add";
+            trackAction(actionName, { status: 'attempt' });
+            var mode = toStr(payload && payload.mode).toLowerCase() === 'swap' ? 'swap' : 'add';
             var contractGid = toStr(payload && payload.contractId);
-            if (!contractGid) throw new Error("missing_contractId");
+            if (!contractGid) throw new Error('missing_contractId');
 
             var contractShortId = toNum(shortId(contractGid), 0);
-            if (!contractShortId) throw new Error("missing_contractId_short");
+            if (!contractShortId) throw new Error('missing_contractId_short');
 
             var variantIdRaw = toStr(payload && payload.variantId);
             var variantShortId = toNum(shortId(variantIdRaw), 0);
-            if (!variantShortId) throw new Error("missing_variantId");
+            if (!variantShortId) throw new Error('missing_variantId');
 
             var qty = toInt(payload && payload.quantity, 0);
-            if (!(qty > 0)) throw new Error("missing_quantity");
+            if (!(qty > 0)) throw new Error('missing_quantity');
 
             // Read contract from cache (cache-first)
             var contract = getContractFromCacheByGid(contractGid);
-            if (!contract) throw new Error("cache_missing_contract");
+            if (!contract) throw new Error('cache_missing_contract');
 
             // Build replaceVariants payload
             var newVariants = {};
@@ -339,53 +375,64 @@
               contractId: contractShortId,
               newVariants: newVariants,
 
-              eventSource: "CUSTOMER_PORTAL",
+              eventSource: 'CUSTOMER_PORTAL',
               stopSwapEmails: true,
-              carryForwardDiscount: "PRODUCT_THEN_EXISTING",
+              carryForwardDiscount: 'PRODUCT_THEN_EXISTING',
             };
 
-            if (mode === "swap") {
+            if (mode === 'swap') {
               var line = payload && payload.line ? payload.line : null;
-              if (!line) throw new Error("missing_line_for_swap");
+              if (!line) throw new Error('missing_line_for_swap');
 
               var oldLineId = toStr(line && line.id);
-              if (!oldLineId) throw new Error("missing_oldLineId");
+              if (!oldLineId) throw new Error('missing_oldLineId');
 
               req.oldLineId = oldLineId;
             }
 
             // POST replaceVariants
-            var resp = await window.__SP.api.postJson("replaceVariants", req);
+            var resp = await window.__SP.api.postJson('replaceVariants', req);
             if (!resp || resp.ok === false) {
-              throw new Error(resp && resp.error ? resp.error : "replace_variants_failed");
+              throw new Error(resp && resp.error ? resp.error : 'replace_variants_failed');
             }
 
             var patch = resp && resp.patch ? resp.patch : null;
-            if (!patch || typeof patch !== "object") patch = {};
+            if (!patch || typeof patch !== 'object') patch = {};
 
             // Patch cache (preserve lines shape)
             var result = patchContractInCache(contractGid, patch);
             if (!result.ok) {
-              try { console.warn("[addSwap] cache patch failed:", result.error); } catch (e2) {}
+              try {
+                console.warn('[addSwap] cache patch failed:', result.error);
+              } catch (e2) {}
             }
 
             // Sync in-memory + rerender
-            try { syncInMemoryContract(contractGid, result.contract || null); } catch (eSync) {}
+            try {
+              syncInMemoryContract(contractGid, result.contract || null);
+            } catch (eSync) {}
             refreshCurrentScreen(contractGid);
 
             try {
-              busy.showToast(ui, mode === "swap" ? "Item swapped." : "Item added.", "success");
+              busy.showToast(ui, mode === 'swap' ? 'Item swapped.' : 'Item added.', 'success');
             } catch (e3) {}
-
+            trackAction(actionName, { status: 'success' });
+            trackActionResult(actionName, true);
             return { ok: true, contract: result.contract || null, patch: patch };
           } catch (e) {
             try {
-              busy.showToast(ui, "Sorry — we couldn’t update this subscription. Please try again.", "error");
+              busy.showToast(
+                ui,
+                'Sorry — we couldn’t update this subscription. Please try again.',
+                'error'
+              );
             } catch (_) {}
+            trackAction(actionName, { status: 'error' });
+            trackActionResult(actionName, false, { reason: toStr(e && e.message) });
             return { ok: false, error: String(e && e.message ? e.message : e) };
           }
         },
-        (toStr(payload && payload.mode).toLowerCase() === "swap") ? "Swapping item…" : "Adding item…"
+        toStr(payload && payload.mode).toLowerCase() === 'swap' ? 'Swapping item…' : 'Adding item…'
       );
     } finally {
       __inFlight = false;
@@ -401,12 +448,12 @@
   window.__SP.actions.items.applyAddSwap = window.__SP.actions.items.submitAddSwap;
   window.__SP.actions.items.submitSwap = function (ui, payload) {
     payload = payload || {};
-    payload.mode = "swap";
+    payload.mode = 'swap';
     return submitAddSwapImpl(ui, payload);
   };
   window.__SP.actions.items.submitAdd = function (ui, payload) {
     payload = payload || {};
-    payload.mode = "add";
+    payload.mode = 'add';
     return submitAddSwapImpl(ui, payload);
   };
 })();

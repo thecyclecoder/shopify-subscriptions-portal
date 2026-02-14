@@ -22,6 +22,129 @@
     return typeof v === 'string' ? v : v == null ? '' : String(v);
   }
 
+  // ---------------- analytics ----------------
+
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  var CANCEL_ENTER_FLAG_PREFIX = '__sp_cancel_enter_v1:'; // + contractId
+  var CANCEL_STEP_FLAG_PREFIX = '__sp_cancel_step_v1:'; // + contractId + ':' + step
+  var CANCEL_REASON_FLAG_PREFIX = '__sp_cancel_reason_v1:'; // + contractId + ':' + reason
+
+  function fireCancelEnterOnce(contractId) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+      var cid = safeStr(contractId).trim();
+      if (!cid) return;
+
+      var key = CANCEL_ENTER_FLAG_PREFIX + cid;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+
+      // "entered cancel flow"
+      a.send('portal_cancel_started', {
+        action: 'cancel_start',
+      });
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+  }
+
+  function fireCancelStepOnce(contractId, step, reason) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+
+      var cid = safeStr(contractId).trim();
+      var st = safeStr(step).trim().toLowerCase();
+      if (!cid || !st) return;
+
+      var key = CANCEL_STEP_FLAG_PREFIX + cid + ':' + st;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+
+      // track step view
+      a.send('portal_cancel_step_view', {
+        action: 'cancel_step_' + st, // uses your existing "portal_Action" dimension param=action
+        reason: safeStr(reason || ''),
+      });
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+  }
+
+  function fireCancelReasonSelectedOnce(contractId, reason) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+
+      var cid = safeStr(contractId).trim();
+      var r = safeStr(reason).trim();
+      if (!cid || !r) return;
+
+      var key = CANCEL_REASON_FLAG_PREFIX + cid + ':' + r;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+
+      a.send('portal_cancel_reason_selected', {
+        action: 'cancel_reason_selected',
+        reason: r,
+      });
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+  }
+  function fireCancelSavedOnce(contractId, offerType, reason) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+
+      var cid = safeStr(contractId).trim();
+      var ot = safeStr(offerType).trim();
+      if (!cid || !ot) return;
+
+      var key = '__sp_cancel_saved_v1:' + cid + ':' + ot;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+
+      a.send('portal_cancel_saved', {
+        action: 'cancel_saved',
+        offer_type: ot,
+        reason: safeStr(reason || ''),
+      });
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+  }
+
+  function fireCancelCompletedOnce(contractId, reason) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+
+      var cid = safeStr(contractId).trim();
+      if (!cid) return;
+
+      var key = '__sp_cancel_completed_v1:' + cid;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+
+      a.send('portal_cancel_completed', {
+        action: 'cancel_completed',
+        reason: safeStr(reason || ''),
+      });
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+  }
+
   function qs() {
     try {
       return new URLSearchParams(window.location.search || '');
@@ -89,8 +212,6 @@
         typeof window.__SP.screens.subscriptionDetail.render === 'function'
       ) {
         window.__SP.screens.subscriptionDetail.render();
-        // Always scroll up so user sees busy/toast changes
-
         return;
       }
     } catch (e2) {}
@@ -157,14 +278,60 @@
     return false;
   }
 
-  function getFirstRealLine(contract) {
+  function shortId(gidOrId) {
+    var s = safeStr(gidOrId).trim();
+    if (!s) return '';
+    var parts = s.split('/');
+    return (parts[parts.length - 1] || s).trim();
+  }
+
+  function normalizeProductId(input) {
+    // Accept "123", 123, "gid://shopify/Product/123"
+    var sid = shortId(input);
+    if (!sid) return '';
+    var digits = sid.replace(/[^\d]/g, '');
+    return (digits || sid).trim();
+  }
+
+  function uniqKeepOrder(arr) {
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < (arr || []).length; i++) {
+      var v = safeStr(arr[i]).trim();
+      if (!v) continue;
+      if (seen[v]) continue;
+      seen[v] = 1;
+      out.push(v);
+    }
+    return out;
+  }
+
+  function getContractLines(contract) {
+    // supports either {lines:[...]} or {lines:{nodes:[...]}}
     var nodes =
       contract && contract.lines && Array.isArray(contract.lines)
         ? contract.lines
         : contract && contract.lines && Array.isArray(contract.lines.nodes)
           ? contract.lines.nodes
           : [];
+    return nodes || [];
+  }
 
+  function getRealProductIds(contract) {
+    var nodes = getContractLines(contract);
+    var ids = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var ln = nodes[i];
+      if (!ln) continue;
+      if (isShippingProtectionLine(ln)) continue;
+      var pid = normalizeProductId(ln.productId || ln.product_id || '');
+      if (pid) ids.push(pid);
+    }
+    return uniqKeepOrder(ids);
+  }
+
+  function getFirstRealLine(contract) {
+    var nodes = getContractLines(contract);
     for (var i = 0; i < nodes.length; i++) {
       var ln = nodes[i];
       if (!ln) continue;
@@ -368,6 +535,57 @@
     };
   }
 
+  // ---------------- reviews (cancel reason step) ----------------
+
+  function getReviewsStore() {
+    try {
+      return window.__SP && window.__SP.data && window.__SP.data.reviews;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function hasAnyReviews(store, productIds) {
+    if (!store || typeof store.hasReviews !== 'function') return false;
+    for (var i = 0; i < (productIds || []).length; i++) {
+      if (store.hasReviews(productIds[i])) return true;
+    }
+    return false;
+  }
+
+  function ensureCancelReviewsPrefetch(contractId, productIds) {
+    // One-shot per contract id to avoid repeated .then(render) loops
+    window.__SP._cancelReviewsPrefetch = window.__SP._cancelReviewsPrefetch || {};
+    var key = safeStr(contractId || '');
+    if (!key) return;
+
+    var store = getReviewsStore();
+    if (!store || typeof store.fetchFeatured !== 'function') return;
+
+    if (window.__SP._cancelReviewsPrefetch[key]) return;
+    window.__SP._cancelReviewsPrefetch[key] = 1;
+
+    try {
+      store
+        .fetchFeatured(productIds)
+        .then(function () {
+          // If user is still on cancel reason step, re-render so the right column can appear
+          try {
+            var sp = qs();
+            var step = safeStr(sp.get('step') || 'reason').toLowerCase();
+            var stillCancel = safeStr(sp.get('intent') || 'cancel').toLowerCase() === 'cancel';
+            var curId = getContractIdFromUrl();
+            if (stillCancel && step === 'reason' && safeStr(curId) === key) {
+              window.__SP.screens.cancel.render();
+            }
+          } catch (e2) {}
+        })
+        .catch(function () {
+          // ignore (reviews card simply won't render)
+        });
+    } catch (e) {}
+  }
+
   // ---------------- UI builders ----------------
 
   function header(ui, contractId, titleText) {
@@ -383,8 +601,8 @@
 
   function reasonTile(ui, key, label, selectedKey, onClick) {
     var isSel = key === selectedKey;
-    var cls = 'sp-btn sp-btn--ghost sp-itemopt' + (isSel ? ' is-selected' : '');
-    var btn = ui.el('button', { type: 'button', class: cls, style: 'text-align:left;' }, [
+    var cls = 'sp-btn sp-btn--ghost sp-itemopt sp-itemopt--left' + (isSel ? ' is-selected' : '');
+    var btn = ui.el('button', { type: 'button', class: cls }, [
       ui.el('div', { class: 'sp-itemopt__title' }, [label]),
       ui.el('div', { class: 'sp-itemopt__desc sp-muted' }, ['Tap to select']),
     ]);
@@ -392,53 +610,109 @@
     return btn;
   }
 
-  function renderReasonStep(ui, contractId, cfg, selectedKey) {
-    return ui.el('div', { class: 'sp-card sp-detail__card sp-cancel' }, [
-      header(ui, contractId, 'Cancel subscription'),
+  function buildReasonsList(ui, cfg, selectedKey) {
+    var keys = Object.keys(cfg);
+    var out = [];
+    for (var i = 0; i < keys.length; i++) {
+      (function (k) {
+        out.push(
+          reasonTile(ui, k, cfg[k].title, selectedKey, function () {
+            pushSearch({ reason: k, step: 'offer' });
+          })
+        );
+      })(keys[i]);
+    }
+    return out;
+  }
 
-      ui.el('div', { class: 'sp-cancel__intro' }, [
-        ui.el('div', { class: 'sp-cancel__alert' }, [
-          ui.el('div', { class: 'sp-cancel__alert-title' }, ['Not cancelled yet']),
-          ui.el('div', { class: 'sp-cancel__alert-sub' }, [
-            'Your subscription remains active until you confirm on the final step.',
-          ]),
-        ]),
+  function buildReviewsCard(ui, contract, productIds) {
+    try {
+      var cards = window.__SP && window.__SP.cards;
+      var reviewsCard = cards && cards.reviews;
+      if (!reviewsCard || typeof reviewsCard.render !== 'function') return null;
 
-        ui.el('div', { class: 'sp-cancel__required' }, [
-          ui.el('div', { class: 'sp-cancel__required-title' }, ['To complete your cancellation']),
-          ui.el('div', { class: 'sp-cancel__required-sub sp-muted' }, [
-            'Select the option that best describes your reason for cancelling.',
-          ]),
-        ]),
-      ]),
+      var r = reviewsCard.render(ui, { contract: contract, productIds: productIds });
+      if (!r || !r.el) return null;
+      return r.el;
+    } catch (e) {
+      return null;
+    }
+  }
 
-      ui.el('div', { class: 'sp-cancel__reasons-panel' }, [
-        ui.el(
-          'div',
-          { class: 'sp-detail__actions sp-detail__actions--stack sp-cancel__reasons' },
-          (function () {
-            var keys = Object.keys(cfg);
-            var out = [];
-            for (var i = 0; i < keys.length; i++) {
-              (function (k) {
-                out.push(
-                  reasonTile(ui, k, cfg[k].title, selectedKey, function () {
-                    pushSearch({ reason: k, step: 'offer' });
-                  })
-                );
-              })(keys[i]);
-            }
-            return out;
-          })()
-        ),
-      ]),
+  function renderReasonStep(ui, contractId, contract, cfg, selectedKey) {
+    var productIds = getRealProductIds(contract);
+    var store = getReviewsStore();
 
-      ui.el('div', { class: 'sp-cancel__footer' }, [
-        ui.el('a', { class: 'sp-cancel__exit sp-muted', href: buildDetailUrl(contractId) }, [
-          'Back to subscription details',
-        ]),
+    // Kick off prefetch (cached/localStorage will short-circuit)
+    ensureCancelReviewsPrefetch(contractId, productIds);
+
+    // Decide whether we should render 2-col layout now (based on already-cached reviews)
+    var showSideReviews = hasAnyReviews(store, productIds);
+    var reasonsClass = showSideReviews
+      ? 'sp-detail__actions sp-detail__actions--stack sp-cancel__reasons sp-cancel__reasons--onecol'
+      : 'sp-detail__actions sp-detail__actions--stack sp-cancel__reasons sp-cancel__reasons--twocol';
+
+    var reasonsEl = ui.el('div', { class: reasonsClass }, buildReasonsList(ui, cfg, selectedKey));
+
+    var alertBar = ui.el('div', { class: 'sp-cancel__alert sp-cancel__alert--top' }, [
+      ui.el('div', { class: 'sp-cancel__alert-title' }, ['Not cancelled yet']),
+      ui.el('div', { class: 'sp-cancel__alert-sub' }, [
+        'Your subscription remains active until you confirm on the final step.',
       ]),
     ]);
+
+    var intro = ui.el('div', { class: 'sp-cancel__required' }, [
+      ui.el('div', { class: 'sp-cancel__required-title' }, ['To complete your cancellation']),
+      ui.el('div', { class: 'sp-cancel__required-sub sp-muted' }, [
+        'Select the option that best describes your reason for cancelling.',
+      ]),
+    ]);
+
+    var footer = ui.el('div', { class: 'sp-cancel__footer' }, [
+      ui.el('a', { class: 'sp-cancel__exit sp-muted', href: buildDetailUrl(contractId) }, [
+        'Back to subscription details',
+      ]),
+    ]);
+
+    // Base card shell
+    var card = ui.el('div', { class: 'sp-card sp-detail__card sp-cancel' }, [
+      header(ui, contractId, 'Cancel subscription'),
+    ]);
+
+    card.appendChild(alertBar);
+
+    // Reasons panel container
+    var reasonsPanel = ui.el('div', { class: 'sp-cancel__reasons-panel' }, []);
+
+    if (!showSideReviews) {
+      // No reviews -> keep reasons full width (2 columns)
+      reasonsPanel.appendChild(intro);
+      reasonsPanel.appendChild(reasonsEl);
+      reasonsPanel.appendChild(footer);
+      card.appendChild(reasonsPanel);
+      return card;
+    }
+
+    // Reviews exist -> two column layout
+    var layout = ui.el('div', { class: 'sp-cancel__layout' }, []);
+    var left = ui.el('div', { class: 'sp-cancel__left' }, []);
+    var right = ui.el('div', { class: 'sp-cancel__right' }, []);
+
+    left.appendChild(intro);
+    left.appendChild(reasonsEl);
+    left.appendChild(footer);
+
+    var reviewsEl = buildReviewsCard(ui, contract, productIds);
+    if (reviewsEl) right.appendChild(reviewsEl);
+
+    layout.appendChild(left);
+
+    // Only append right if we actually got a card element
+    if (right.childNodes && right.childNodes.length) layout.appendChild(right);
+
+    reasonsPanel.appendChild(layout);
+    card.appendChild(reasonsPanel);
+    return card;
   }
 
   function offerCard(ui, conf) {
@@ -513,11 +787,11 @@
     var btns = card.querySelectorAll('button');
 
     btns[0].addEventListener('click', function () {
-      runOffer(ui, contractId, conf.primary);
+      runOffer(ui, contractId, conf.primary, reasonKey);
     });
 
     btns[1].addEventListener('click', function () {
-      runOffer(ui, contractId, conf.secondary);
+      runOffer(ui, contractId, conf.secondary, reasonKey);
     });
 
     btns[2].addEventListener('click', function () {
@@ -531,14 +805,27 @@
   }
 
   function renderConfirmStep(ui, contractId /*, reasonKey*/) {
-    var card = ui.el('div', { class: 'sp-card sp-detail__card' }, [
+    var contract = getCachedContractById(contractId);
+
+    var productIds = contract ? getRealProductIds(contract) : [];
+    var store = getReviewsStore();
+
+    // Prefetch (cached/localStorage will short-circuit)
+    ensureCancelReviewsPrefetch(contractId, productIds);
+
+    var showSideReviews = hasAnyReviews(store, productIds);
+
+    var card = ui.el('div', { class: 'sp-card sp-detail__card sp-cancel sp-cancel-confirm' }, [
       header(ui, contractId, 'Confirm cancellation'),
-      ui.el('p', { class: 'sp-muted', style: 'margin-top:10px;' }, [
+    ]);
+
+    var leftInner = ui.el('div', { class: 'sp-cancel-confirm__leftinner' }, [
+      ui.el('p', { class: 'sp-muted sp-cancel-confirm__copy' }, [
         'You can come back any time. If you’d still like to cancel, confirm below.',
       ]),
       ui.el(
         'div',
-        { class: 'sp-detail__actions sp-detail__actions--stack', style: 'margin-top:14px;' },
+        { class: 'sp-detail__actions sp-detail__actions--stack sp-cancel-confirm__actions' },
         [
           ui.el('button', { type: 'button', class: 'sp-btn sp-btn-primary' }, [
             'Cancel subscription',
@@ -548,7 +835,29 @@
       ),
     ]);
 
-    card.querySelectorAll('button')[0].addEventListener('click', async function () {
+    if (!showSideReviews) {
+      // Original full-width layout
+      card.appendChild(leftInner);
+    } else {
+      // Two-column layout (left actions + right reviews)
+      var layout = ui.el('div', { class: 'sp-cancel__layout sp-cancel-confirm__layout' }, []);
+      var left = ui.el('div', { class: 'sp-cancel__left sp-cancel-confirm__left' }, []);
+      var right = ui.el('div', { class: 'sp-cancel__right sp-cancel-confirm__right' }, []);
+
+      left.appendChild(leftInner);
+
+      var reviewsEl = buildReviewsCard(ui, contract, productIds);
+      if (reviewsEl) right.appendChild(reviewsEl);
+
+      layout.appendChild(left);
+      if (right.childNodes && right.childNodes.length) layout.appendChild(right);
+
+      card.appendChild(layout);
+    }
+
+    // Wire buttons
+    var btns = card.querySelectorAll('button');
+    btns[0].addEventListener('click', async function () {
       try {
         try {
           scrollToCancelTop();
@@ -567,9 +876,14 @@
         }
 
         var r = await actions.cancel(ui, contractGid);
-        if (r && r.ok === false) return; // action already toasted
+        if (r && r.ok === false) return;
 
-        // After hard cancel, route back to detail (no page refresh)
+        // pull reason from URL (confirm step still has ?reason=...)
+        var sp2 = qs();
+        var reason2 = safeStr(sp2.get('reason') || '');
+
+        fireCancelCompletedOnce(contractId, reason2);
+
         exitToDetail(ui, contractId);
       } catch (err) {
         try {
@@ -578,7 +892,8 @@
         showToast(ui, 'Sorry — we couldn’t cancel your subscription. Please try again.', 'error');
       }
     });
-    card.querySelectorAll('button')[1].addEventListener('click', function () {
+
+    btns[1].addEventListener('click', function () {
       exitToDetail(ui, contractId);
     });
 
@@ -604,18 +919,12 @@
         return;
       }
 
-      // ✅ Catalog from DOM (same method you described)
+      // ✅ Catalog from DOM
       var catalog = getCatalogFromDom();
-      if (!catalog.length) catalog = []; // allow modal to still open (no price row)
+      if (!catalog.length) catalog = [];
 
-      // ✅ Snapshot for tier pricing (modal expects variantId + quantity; we also pass id)
       function getLineSnapshot() {
-        var nodes =
-          (contract &&
-            contract.lines &&
-            Array.isArray(contract.lines.nodes) &&
-            contract.lines.nodes) ||
-          [];
+        var nodes = getContractLines(contract);
         var snap = [];
         for (var i = 0; i < nodes.length; i++) {
           var ln = nodes[i];
@@ -640,15 +949,12 @@
         getLineSnapshot: getLineSnapshot,
 
         onSubmit: function (payload) {
-          // Use your existing submitAddSwap router so add/swap works everywhere consistently
-          // (If your cancel.js has access to submitAddSwap helper, call that instead)
           if (typeof actions.items.submitAddSwap === 'function') {
             return actions.items.submitAddSwap(ui, payload);
           }
           if (typeof actions.items.applyAddSwap === 'function') {
             return actions.items.applyAddSwap(ui, payload);
           }
-          // fallback: the card helper you showed earlier (if you imported it into cancel.js)
           throw new Error('Swap action not wired.');
         },
       });
@@ -664,11 +970,10 @@
     return c && c.id ? String(c.id) : '';
   }
 
-  async function runOffer(ui, contractId, offer) {
+  async function runOffer(ui, contractId, offer, reasonKey) {
     offer = offer || {};
     var type = safeStr(offer.type || '');
 
-    // Always scroll up so user sees busy/toast changes
     try {
       scrollToCancelTop();
     } catch (e) {}
@@ -686,20 +991,19 @@
     }
 
     try {
-      // PAUSE
       if (type === 'pause') {
         var days = Number(offer.days);
         if (!isFinite(days) || days <= 0) throw new Error('invalid_pause_days');
         if (typeof actions.pause !== 'function') throw new Error('pause_action_missing');
 
         var r1 = await actions.pause(ui, contractGid, days);
-        if (r1 && r1.ok === false) return; // action already toasted
+        if (r1 && r1.ok === false) return;
 
         exitToDetail(ui, contractId);
+        fireCancelSavedOnce(contractId, 'pause', reasonKey);
         return;
       }
 
-      // FREQUENCY
       if (type === 'frequency') {
         var months = Number(offer.months);
         if (!isFinite(months) || months <= 0) throw new Error('invalid_frequency_months');
@@ -711,12 +1015,11 @@
           interval: 'MONTH',
         });
         if (r2 && r2.ok === false) return;
-
+        fireCancelSavedOnce(contractId, 'frequency', reasonKey);
         exitToDetail(ui, contractId);
         return;
       }
 
-      // COUPON
       if (type === 'coupon') {
         if (!actions.coupon) throw new Error('coupon_action_missing');
 
@@ -732,11 +1035,10 @@
           return;
         }
 
-        // Support either .apply or .run
         if (typeof actions.coupon.apply === 'function') {
           var r3 = await actions.coupon.apply(ui, contractGid, code);
           if (r3 && r3.ok === false) return;
-
+          fireCancelSavedOnce(contractId, 'coupon', reasonKey);
           exitToDetail(ui, contractId);
           return;
         }
@@ -748,7 +1050,7 @@
             discountCode: code,
           });
           if (r4 && r4.ok === false) return;
-
+          fireCancelSavedOnce(contractId, 'coupon', reasonKey);
           exitToDetail(ui, contractId);
           return;
         }
@@ -756,7 +1058,6 @@
         throw new Error('coupon_apply_missing');
       }
 
-      // MANAGE ITEMS (swap first item)
       if (type === 'manage_items') {
         try {
           var contract = getCachedContractById(contractId);
@@ -776,6 +1077,7 @@
           }
 
           openSwapFirstItemModal(ui, actions, contract);
+          fireCancelSavedOnce(contractId, 'manage_items', reasonKey);
         } catch (err) {
           showToast(
             ui,
@@ -789,17 +1091,14 @@
         return;
       }
 
-      // SUPPORT (Gorgias or Help Center fallback)
       if (type === 'support') {
         try {
-          // If Gorgias widget exists, open it
           if (window.GorgiasChat && typeof window.GorgiasChat.open === 'function') {
             window.GorgiasChat.open();
             return;
           }
-
-          // Fallback: open help center in new tab
           window.open('https://help.superfoodscompany.com', '_blank', 'noopener,noreferrer');
+          fireCancelSavedOnce(contractId, 'support', reasonKey);
         } catch (e) {
           showToast(ui, 'Unable to open support right now. Please try again.', 'error');
         }
@@ -819,6 +1118,9 @@
   // ---------------- screen render ----------------
 
   function render() {
+    if (window.__SP.analytics && window.__SP.analytics.setPage) {
+      window.__SP.analytics.setPage('cancel_flow');
+    }
     var ui = window.__SP.ui;
     if (!ui) return;
 
@@ -846,6 +1148,13 @@
     var step = safeStr(sp.get('step') || 'reason').toLowerCase();
     var reason = safeStr(sp.get('reason') || '');
 
+    // Analytics: entered cancel flow + step + reason selected
+    fireCancelEnterOnce(contractId);
+    fireCancelStepOnce(contractId, step, reason);
+
+    // Only fire "reason selected" once they actually have a reason
+    if (reason) fireCancelReasonSelectedOnce(contractId, reason);
+
     var images = getCancelImagesFromDom();
     var coupons = getCancelCouponsFromDom();
     var cfg = reasonConfig(images, coupons);
@@ -853,7 +1162,7 @@
     var rootEl;
     if (step === 'offer') rootEl = renderOfferStep(ui, contractId, cfg, reason);
     else if (step === 'confirm') rootEl = renderConfirmStep(ui, contractId, reason);
-    else rootEl = renderReasonStep(ui, contractId, cfg, reason);
+    else rootEl = renderReasonStep(ui, contractId, contract, cfg, reason);
 
     ui.setRoot(rootEl);
 

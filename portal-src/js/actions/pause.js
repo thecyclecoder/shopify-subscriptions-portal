@@ -2,26 +2,52 @@
   window.__SP = window.__SP || {};
   window.__SP.actions = window.__SP.actions || {};
 
-  var SUBS_CACHE_KEY = "__sp_subscriptions_cache_v2";
+  var SUBS_CACHE_KEY = '__sp_subscriptions_cache_v2';
   var TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   function shortId(gid) {
-    var s = String(gid || "");
-    if (!s) return "";
-    var parts = s.split("/");
+    var s = String(gid || '');
+    if (!s) return '';
+    var parts = s.split('/');
     return parts[parts.length - 1] || s;
   }
 
   function toStr(v) {
-    return typeof v === "string" ? v : v == null ? "" : String(v);
+    return typeof v === 'string' ? v : v == null ? '' : String(v);
+  }
+
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function trackAction(actionName, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.portalAction !== 'function') return;
+      a.portalAction(actionName, extra || {});
+    } catch (e) {}
+  }
+
+  function trackActionResult(actionName, ok, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+      a.send(
+        'portal_action_result',
+        Object.assign(
+          { action: String(actionName || ''), status: ok ? 'success' : 'error' },
+          extra || {}
+        )
+      );
+    } catch (e) {}
   }
 
   // ---- cache helpers ------------------------------------------------------
 
   function looksLikeSubsCacheEntry(entry) {
-    if (!entry || typeof entry !== "object") return false;
-    if (!entry.ts || typeof entry.ts !== "number") return false;
-    if (!entry.data || typeof entry.data !== "object") return false;
+    if (!entry || typeof entry !== 'object') return false;
+    if (!entry.ts || typeof entry.ts !== 'number') return false;
+    if (!entry.data || typeof entry.data !== 'object') return false;
     if (entry.data.ok !== true) return false;
     if (!Array.isArray(entry.data.contracts)) return false;
     return true;
@@ -94,13 +120,13 @@
   function patchContractInCache(contractGid, patch) {
     try {
       var entry = readSubsCacheEntry();
-      if (!entry) return { ok: false, error: "cache_missing" };
+      if (!entry) return { ok: false, error: 'cache_missing' };
 
       var idx = getContractIndexByGid(entry, contractGid);
-      if (idx < 0) return { ok: false, error: "contract_not_found_in_cache" };
+      if (idx < 0) return { ok: false, error: 'contract_not_found_in_cache' };
 
       var existing = entry.data.contracts[idx];
-      var base = (existing && typeof existing === "object") ? existing : { id: String(contractGid) };
+      var base = existing && typeof existing === 'object' ? existing : { id: String(contractGid) };
 
       var next = applyPatchToContract(base, patch);
 
@@ -109,7 +135,7 @@
 
       // ✅ refresh TTL by writing
       var wrote = writeSubsCacheEntry(entry);
-      if (!wrote) return { ok: false, error: "cache_write_failed" };
+      if (!wrote) return { ok: false, error: 'cache_write_failed' };
 
       return { ok: true, contract: next };
     } catch (e) {
@@ -172,9 +198,9 @@
 
   function isSoftPausedByPortal(attrsMap) {
     var lastAction = toStr(attrsMap.portal_last_action).toLowerCase();
-    var pauseDays = Number(attrsMap.portal_pause_days || "0") || 0;
+    var pauseDays = Number(attrsMap.portal_pause_days || '0') || 0;
     if (pauseDays <= 0) return false;
-    if (lastAction.indexOf("pause") !== 0) return false;
+    if (lastAction.indexOf('pause') !== 0) return false;
     return true;
   }
 
@@ -183,7 +209,7 @@
     var softPaused = isSoftPausedByPortal(attrsMap);
 
     return {
-      bucket: softPaused ? "paused" : "active",
+      bucket: softPaused ? 'paused' : 'active',
       isSoftPaused: softPaused,
 
       lastAction: toStr(attrsMap.portal_last_action),
@@ -192,14 +218,14 @@
       lastActionAt: toStr(attrsMap.portal_last_action_at),
 
       needsAttention: false,
-      attentionReason: "",
-      attentionMessage: ""
+      attentionReason: '',
+      attentionMessage: '',
     };
   }
 
   function applyPatchToContract(contract, patch) {
-    var base = (contract && typeof contract === "object") ? contract : {};
-    var p = (patch && typeof patch === "object") ? patch : {};
+    var base = contract && typeof contract === 'object' ? contract : {};
+    var p = patch && typeof patch === 'object' ? patch : {};
 
     // Clone shallow (avoid mutating the cached object by reference)
     var next = {};
@@ -234,7 +260,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptionDetail &&
-        typeof window.__SP.screens.subscriptionDetail.render === "function"
+        typeof window.__SP.screens.subscriptionDetail.render === 'function'
       ) {
         window.__SP.screens.subscriptionDetail.render();
         return;
@@ -246,7 +272,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptions &&
-        typeof window.__SP.screens.subscriptions.render === "function"
+        typeof window.__SP.screens.subscriptions.render === 'function'
       ) {
         window.__SP.screens.subscriptions.render();
         return;
@@ -258,40 +284,58 @@
 
   window.__SP.actions.pause = async function pause(ui, contractGid, days) {
     var busy = window.__SP.actions && window.__SP.actions.busy;
-    if (!busy) throw new Error("busy_not_loaded");
+    if (!busy) throw new Error('busy_not_loaded');
 
     return await busy.withBusy(ui, async function () {
       try {
+        trackAction('pause', { status: 'attempt' });
         var contractShortId = Number(shortId(contractGid));
 
-        var resp = await window.__SP.api.postJson("pause", {
+        var resp = await window.__SP.api.postJson('pause', {
           contractId: contractShortId,
-          pauseDays: Number(days)
+          pauseDays: Number(days),
         });
 
         if (!resp || resp.ok === false) {
-          throw new Error(resp && resp.error ? resp.error : "pause_failed");
+          throw new Error(resp && resp.error ? resp.error : 'pause_failed');
         }
 
         // Expect: resp.patch = { nextBillingDate, customAttributes:[...] }
         var patch = resp.patch || null;
-        if (!patch || typeof patch !== "object") {
-          throw new Error("pause_missing_patch");
+        if (!patch || typeof patch !== 'object') {
+          throw new Error('pause_missing_patch');
         }
 
         // ✅ deterministic cache update: read -> patch -> write (refresh TTL) -> render
         var result = patchContractInCache(contractGid, patch);
         if (!result.ok) {
           // if cache is missing, we still re-render (screen will fetch direct if needed)
-          try { console.warn("[pause] cache patch failed:", result.error); } catch (e) {}
+          try {
+            console.warn('[pause] cache patch failed:', result.error);
+          } catch (e) {}
         }
 
         refreshCurrentScreen();
 
-        busy.showToast(ui, "Done. Your next order was pushed out " + String(days) + " days.", "success");
+        busy.showToast(
+          ui,
+          'Done. Your next order was pushed out ' + String(days) + ' days.',
+          'success'
+        );
+        trackAction('pause', { status: 'success' });
+        trackActionResult('pause', true);
+
         return { ok: true, contract: result.contract || null };
       } catch (e) {
-        busy.showToast(ui, "Sorry — we couldn’t update your subscription. Please try again.", "error");
+        busy.showToast(
+          ui,
+          'Sorry — we couldn’t update your subscription. Please try again.',
+          'error'
+        );
+        trackAction('pause', { status: 'error' });
+        trackActionResult('pause', false, {
+          reason: toStr(e && e.message),
+        });
         return { ok: false, error: String(e && e.message ? e.message : e) };
       }
     });

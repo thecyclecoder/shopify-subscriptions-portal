@@ -16,6 +16,51 @@
     return s;
   }
 
+  // ---------------------------------------------------------------------------
+  // Analytics (subscriptions list view)
+  // - fires once per browser session per status tab
+  // - "manageable_count" = active + paused
+  // ---------------------------------------------------------------------------
+
+  var SUBS_VIEW_FLAG_PREFIX = '__sp_portal_subscriptions_view_v1:'; // + status
+
+  function safeStr(v) {
+    return typeof v === 'string' ? v : v == null ? '' : String(v);
+  }
+
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function tryFireSubscriptionsViewOncePerSession(status, manageableCount) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+
+      var st = safeStr(status).toLowerCase() || 'active';
+      var key = SUBS_VIEW_FLAG_PREFIX + st;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+      if (!a) return;
+
+      // Preferred: unified send()
+      if (typeof a.send === 'function') {
+        a.send('portal_subscriptions_view', {
+          status: st,
+          subscription_count: Number(manageableCount) || 0, // active + paused
+        });
+      } else if (typeof a.portalAction === 'function') {
+        // Fallback if your wrapper only exposes portalAction()
+        a.portalAction('subscriptions_view', {
+          status: st,
+          subscription_count: Number(manageableCount) || 0,
+        });
+      }
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+  }
+
   var SUBS_CACHE_KEY = '__sp_subscriptions_cache_v2';
 
   function maybeClearDetailPageCache() {
@@ -314,22 +359,34 @@
 
     var buckets = utils.pickBuckets(data);
 
+    // Analytics: list view + manageable subscription count (active + paused)
+    try {
+      var activeCount = buckets && Array.isArray(buckets.active) ? buckets.active.length : 0;
+      var pausedCount = buckets && Array.isArray(buckets.paused) ? buckets.paused.length : 0;
+      var manageableCount = activeCount + pausedCount;
+      if (window.__SP.analytics && window.__SP.analytics.setPage) {
+        window.__SP.analytics.setPage('subscriptions');
+      }
+
+      tryFireSubscriptionsViewOncePerSession(status, manageableCount);
+    } catch (e) {}
+
     // ✅ DEBUG: force first ACTIVE subscription to show attention banner
     // (Only when window.__SP.debug is true)
-    try {
-      if (
-        window.__SP &&
-        window.__SP.debug &&
-        buckets &&
-        Array.isArray(buckets.active) &&
-        buckets.active.length
-      ) {
-        var c0 = buckets.active[0];
-        c0.portalState = c0.portalState || {};
-        c0.portalState.needsAttention = true;
-        c0.portalState.attentionMessage = 'Action needed: payment failed (debug)';
-      }
-    } catch (e) {}
+    // try {
+    //   if (
+    //     window.__SP &&
+    //     window.__SP.debug &&
+    //     buckets &&
+    //     Array.isArray(buckets.active) &&
+    //     buckets.active.length
+    //   ) {
+    //     var c0 = buckets.active[0];
+    //     c0.portalState = c0.portalState || {};
+    //     c0.portalState.needsAttention = true;
+    //     c0.portalState.attentionMessage = 'Action needed: payment failed (debug)';
+    //   }
+    // } catch (e) {}
 
     var contracts =
       status === 'active'

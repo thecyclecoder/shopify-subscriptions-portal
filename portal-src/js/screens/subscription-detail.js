@@ -25,6 +25,10 @@
     }
   }
 
+  function safeStr(v) {
+    return typeof v === 'string' ? v : v == null ? '' : String(v);
+  }
+
   function getConfig() {
     var cfg = (window.__SP && window.__SP.config) || {};
     return {
@@ -61,6 +65,125 @@
       ui.el('div', { class: 'sp-alert__title' }, [title]),
       ui.el('div', { class: 'sp-alert__body sp-muted' }, [body]),
     ]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Analytics helpers (subscription detail)
+  // ---------------------------------------------------------------------------
+
+  var DETAIL_VIEW_FLAG_PREFIX = '__sp_portal_sub_detail_view_v1:'; // + contractId
+
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function clampInt(n, min, max) {
+    var x = Number(n);
+    if (!isFinite(x)) return min;
+    x = Math.trunc(x);
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
+  }
+
+  function parseDateMs(iso) {
+    var s = safeStr(iso).trim();
+    if (!s) return 0;
+    try {
+      var d = new Date(s);
+      var t = d.getTime();
+      return isFinite(t) ? t : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function diffDaysCeil(fromMs, toMs) {
+    if (!fromMs || !toMs) return null;
+    var ms = toMs - fromMs;
+    // If already past due, treat as 0
+    if (ms <= 0) return 0;
+    return Math.ceil(ms / (24 * 60 * 60 * 1000));
+  }
+
+  function ageBucketFromCreatedAt(createdAtIso) {
+    var createdMs = parseDateMs(createdAtIso);
+    if (!createdMs) return ''; // unknown
+    var ageDays = Math.floor((Date.now() - createdMs) / (24 * 60 * 60 * 1000));
+    if (ageDays < 0) ageDays = 0;
+
+    if (ageDays <= 30) return '0_30';
+    if (ageDays <= 60) return '30_60';
+    if (ageDays <= 90) return '60_90';
+    return '90_plus';
+  }
+
+  function statusForAnalytics(contract, utils) {
+    // use the same bucket logic your UI uses
+    try {
+      if (utils && typeof utils.bucket === 'function') {
+        return safeStr(utils.bucket(contract)).toLowerCase();
+      }
+    } catch (e) {}
+    // fallback
+    var raw = safeStr(contract && contract.status).toLowerCase();
+    return raw || '';
+  }
+
+  function tryFireSubscriptionDetailViewOncePerSession(contract, utils) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+
+      var contractId = '';
+      try {
+        contractId =
+          utils && typeof utils.shortId === 'function'
+            ? utils.shortId(contract && contract.id)
+            : safeStr(contract && contract.id);
+      } catch (e) {
+        contractId = safeStr(contract && contract.id);
+      }
+      contractId = safeStr(contractId).trim();
+      if (!contractId) return;
+
+      var key = DETAIL_VIEW_FLAG_PREFIX + contractId;
+      if (sessionStorage.getItem(key) === '1') return;
+
+      var a = getAnalytics();
+
+      if (!a) return;
+
+      var age_bucket = ageBucketFromCreatedAt(contract && contract.createdAt);
+
+      // days_to_renewal (only meaningful if we have nextBillingDate and not cancelled)
+      var st = statusForAnalytics(contract, utils);
+      var days_to_renewal = '';
+      if (st !== 'cancelled') {
+        var nextMs = parseDateMs(contract && contract.nextBillingDate);
+        if (nextMs) {
+          var dtr = diffDaysCeil(Date.now(), nextMs);
+          // Clamp to keep reporting sane
+          dtr = dtr == null ? null : clampInt(dtr, 0, 365);
+          if (dtr != null) days_to_renewal = dtr;
+        }
+      }
+
+      if (typeof a.send === 'function') {
+        a.send('portal_subscription_detail_view', {
+          status: st,
+          age_bucket: age_bucket,
+          days_to_renewal: days_to_renewal,
+        });
+      } else if (typeof a.portalAction === 'function') {
+        a.portalAction('subscription_detail_view', {
+          status: st,
+          age_bucket: age_bucket,
+          days_to_renewal: days_to_renewal,
+        });
+      }
+
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
   }
 
   // ---------------------------------------------------------------------------
@@ -230,6 +353,9 @@
   // ---------------------------------------------------------------------------
 
   async function render() {
+    if (window.__SP.analytics && window.__SP.analytics.setPage) {
+      window.__SP.analytics.setPage('subscription_detail');
+    }
     var ui = window.__SP.ui;
     ui.ensureBaseStyles();
     ui.setRoot(ui.loading('Loading subscription…'));
@@ -325,6 +451,11 @@
 
     contract = utils.normalizeContract(contract);
 
+    // Analytics: detail view (once per session per contract)
+    try {
+      tryFireSubscriptionDetailViewOncePerSession(contract, utils);
+    } catch (e) {}
+
     // --- make the loaded contract available to other screens (cancel flow, etc) ---
     try {
       window.__SP = window.__SP || {};
@@ -373,6 +504,42 @@
         }
       } catch (e) {}
       lines.push(ln);
+    }
+
+    // Prefetch featured reviews (non-blocking)
+    // - Skip cancelled subscriptions (no point fetching)
+    // - We only fetch for "real lines" (shipping protection already split out)
+    // - Product IDs are Shopify numeric IDs (gid shortId)
+    var productIds = [];
+
+    if (bucket !== 'cancelled') {
+      try {
+        var seenPid = {};
+        for (var rp = 0; rp < lines.length; rp++) {
+          var rln = lines[rp];
+          if (!rln) continue;
+          var pid = '';
+          try {
+            pid = utils && typeof utils.shortId === 'function' ? utils.shortId(rln.productId) : '';
+          } catch (e0) {
+            pid = '';
+          }
+          if (!pid) continue;
+          if (seenPid[pid]) continue;
+          seenPid[pid] = 1;
+          productIds.push(pid);
+        }
+      } catch (e1) {
+        productIds = [];
+      }
+
+      try {
+        var reviewsStore = window.__SP && window.__SP.data && window.__SP.data.reviews;
+        if (reviewsStore && typeof reviewsStore.fetchFeatured === 'function' && productIds.length) {
+          // Fire-and-forget; the reviews card will subscribe + fade in when ready.
+          reviewsStore.fetchFeatured(productIds).catch(function () {});
+        }
+      } catch (e2) {}
     }
 
     // Subtitle
@@ -442,6 +609,7 @@
       linesAll: linesAll,
       lines: lines,
       shipLine: shipLine,
+      productIds: productIds,
 
       // allow cards to trigger a refresh
       rerender: function () {
@@ -463,6 +631,9 @@
         linesAll: linesAll,
         shipLine: shipLine,
         lines: lines,
+
+        // product ids (real lines only)
+        productIds: productIds,
 
         // cancel flow navigation helpers
         detailUrl: detailUrl,
@@ -530,9 +701,9 @@
 
     var addonsCardEl = null;
     if (bucket !== 'cancelled') {
-      addonsCardEl =
-        safeCardRender('addons', ui, cardCtx) ||
-        placeholderCard(ui, 'One-time add-ons', 'Add to your next order (one-time only).');
+      // addonsCardEl =
+      //   safeCardRender('addons', ui, cardCtx) ||
+      //   placeholderCard(ui, 'One-time add-ons', 'Add to your next order (one-time only).');
     }
     var reviewsCardEl = null;
     if (bucket !== 'cancelled') {

@@ -1146,9 +1146,11 @@
       var hint = null;
 
       if (!isCancelled) {
-        addRow = ui.el('div', { class: 'sp-detail__items-actions' }, [
-          addBtn(ui, 'Add product', onAdd, { disabled: !canAdd }),
-        ]);
+        addRow = ui.el(
+          'div',
+          { class: 'sp-detail__actions sp-detail__actions--stack add-product-row' },
+          [addBtn(ui, 'Add product', onAdd, { disabled: !canAdd })]
+        );
 
         hint = ui.el('p', { class: 'sp-muted sp-detail__hint' }, [
           isReadOnly ? 'Actions will unlock when available.' : 'Add a product and save even more.',

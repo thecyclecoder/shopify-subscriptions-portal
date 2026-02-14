@@ -4,24 +4,24 @@
   window.__SP.cards = window.__SP.cards || {};
 
   function sectionTitle(ui, title, sub) {
-    return ui.el("div", { class: "sp-detail__sectionhead" }, [
-      ui.el("div", { class: "sp-title2" }, [title]),
-      sub ? ui.el("p", { class: "sp-muted sp-detail__section-sub" }, [sub]) : ui.el("span", {}, []),
+    return ui.el('div', { class: 'sp-detail__sectionhead' }, [
+      ui.el('div', { class: 'sp-title2' }, [title]),
+      sub ? ui.el('p', { class: 'sp-muted sp-detail__section-sub' }, [sub]) : ui.el('span', {}, []),
     ]);
   }
 
   function s(v) {
-    return typeof v === "string" ? v.trim() : "";
+    return typeof v === 'string' ? v.trim() : '';
   }
 
   function toNum(v, fallback) {
     var n = Number(v);
-    return isFinite(n) ? n : (fallback == null ? 0 : fallback);
+    return isFinite(n) ? n : fallback == null ? 0 : fallback;
   }
 
   function normInterval(v) {
     var x = s(v).toUpperCase();
-    if (!x || x === "$UNKNOWN") return "";
+    if (!x || x === '$UNKNOWN') return '';
     return x;
   }
 
@@ -29,26 +29,26 @@
     var i = normInterval(interval);
     var c = toNum(intervalCount, 0);
 
-    if (i === "WEEK") {
-      if (c === 4) return "Monthly";
-      if (c === 8) return "Every 2 Months";
-      if (c === 2) return "Every 2 Weeks";
-      return c > 0 ? ("Every " + c + " Weeks") : "";
+    if (i === 'WEEK') {
+      if (c === 4) return 'Monthly';
+      if (c === 8) return 'Every 2 Months';
+      if (c === 2) return 'Every 2 Weeks';
+      return c > 0 ? 'Every ' + c + ' Weeks' : '';
     }
 
-    if (i === "MONTH") {
-      if (c === 1) return "Monthly";
-      if (c === 2) return "Every 2 Months";
-      return c > 0 ? ("Every " + c + " Months") : "";
+    if (i === 'MONTH') {
+      if (c === 1) return 'Monthly';
+      if (c === 2) return 'Every 2 Months';
+      return c > 0 ? 'Every ' + c + ' Months' : '';
     }
 
-    return "";
+    return '';
   }
 
   function getCurrentFromBillingPolicy(contract) {
     try {
       var bp = contract && contract.billingPolicy;
-      if (!bp || typeof bp !== "object") return null;
+      if (!bp || typeof bp !== 'object') return null;
 
       var interval = normInterval(bp.interval);
 
@@ -68,12 +68,14 @@
   }
 
   function disabledBtn(ui, text) {
-    return ui.el("button", { type: "button", class: "sp-btn sp-btn--disabled", disabled: true }, [text]);
+    return ui.el('button', { type: 'button', class: 'sp-btn sp-btn--disabled', disabled: true }, [
+      text,
+    ]);
   }
 
   function enabledBtn(ui, text, onClick) {
-    var btn = ui.el("button", { type: "button", class: "sp-btn" }, [text]);
-    if (typeof onClick === "function") btn.addEventListener("click", onClick);
+    var btn = ui.el('button', { type: 'button', class: 'sp-btn' }, [text]);
+    if (typeof onClick === 'function') btn.addEventListener('click', onClick);
     return btn;
   }
 
@@ -88,49 +90,44 @@
     var busy = actions.busy;
 
     // Overlay
-    var modalRoot = ui.el("div", { class: "sp-modal" }, []);
-    document.body.classList.add("sp-modal-open");
+    var modalRoot = ui.el('div', { class: 'sp-modal' }, []);
+    document.body.classList.add('sp-modal-open');
 
     // Card
-    var card = ui.el("div", { class: "sp-modal__card" }, []);
+    var card = ui.el('div', { class: 'sp-modal__card' }, []);
 
     // Title
-    var title = ui.el("div", { class: "sp-modal__title" }, [
-      "Change frequency"
-    ]);
+    var title = ui.el('div', { class: 'sp-modal__title' }, ['Change frequency']);
 
     var options = [
-      { id: "freq_2w", label: "Every 2 Weeks", interval: "WEEK", intervalCount: 2 },
-      { id: "freq_4w", label: "Monthly", interval: "WEEK", intervalCount: 4 },
-      { id: "freq_8w", label: "Every 2 Months", interval: "WEEK", intervalCount: 8 },
+      { id: 'freq_2w', label: 'Every 2 Weeks', interval: 'WEEK', intervalCount: 2 },
+      { id: 'freq_4w', label: 'Monthly', interval: 'WEEK', intervalCount: 4 },
+      { id: 'freq_8w', label: 'Every 2 Months', interval: 'WEEK', intervalCount: 8 },
     ];
 
     var selected = {
-      interval: normInterval(currentSel && currentSel.interval) || "WEEK",
+      interval: normInterval(currentSel && currentSel.interval) || 'WEEK',
       intervalCount: toNum(currentSel && currentSel.intervalCount, 4) || 4,
     };
 
     function isSelected(opt) {
-      return (
-        selected.interval === opt.interval &&
-        selected.intervalCount === opt.intervalCount
-      );
+      return selected.interval === opt.interval && selected.intervalCount === opt.intervalCount;
     }
 
     function radioRow(opt) {
-      var input = ui.el("input", {
-        type: "radio",
-        name: "sp_freq_choice",
+      var input = ui.el('input', {
+        type: 'radio',
+        name: 'sp_freq_choice',
         value: opt.id,
         checked: isSelected(opt) ? true : undefined,
       });
 
-      var row = ui.el("label", { class: "sp-radio-row" }, [
+      var row = ui.el('label', { class: 'sp-radio-row' }, [
         input,
-        ui.el("span", { class: "sp-radio-row__label" }, [opt.label]),
+        ui.el('span', { class: 'sp-radio-row__label' }, [opt.label]),
       ]);
 
-      row.addEventListener("click", function () {
+      row.addEventListener('click', function () {
         selected.interval = opt.interval;
         selected.intervalCount = opt.intervalCount;
 
@@ -146,45 +143,38 @@
     }
 
     // Body (scrollable)
-    var body = ui.el("div", { class: "sp-modal__body" }, [
-      ui.el("p", { class: "sp-muted" }, [
-        "Choose how often you want this subscription delivered."
-      ]),
-      ui.el("div", { class: "sp-radio-list" }, options.map(radioRow)),
+    var body = ui.el('div', { class: 'sp-modal__body' }, [
+      ui.el('p', { class: 'sp-muted' }, ['Choose how often you want this subscription delivered.']),
+      ui.el('div', { class: 'sp-radio-list' }, options.map(radioRow)),
     ]);
 
     function close() {
-      try { modalRoot.remove(); } catch (e) {}
-      document.body.classList.remove("sp-modal-open");
+      try {
+        modalRoot.remove();
+      } catch (e) {}
+      document.body.classList.remove('sp-modal-open');
     }
 
     // Footer
-    var btnCancel = ui.el(
-      "button",
-      { type: "button", class: "sp-btn sp-btn--secondary" },
-      ["Cancel"]
-    );
-    btnCancel.addEventListener("click", close);
+    var btnCancel = ui.el('button', { type: 'button', class: 'sp-btn sp-btn--secondary' }, [
+      'Cancel',
+    ]);
+    btnCancel.addEventListener('click', close);
 
-    var btnSave = ui.el(
-      "button",
-      { type: "button", class: "sp-btn" },
-      ["Submit"]
-    );
+    var btnSave = ui.el('button', { type: 'button', class: 'sp-btn' }, ['Submit']);
 
-    btnSave.addEventListener("click", async function () {
+    btnSave.addEventListener('click', async function () {
       try {
         var contract = ctx.contract;
-        var contractGid = contract && contract.id ? String(contract.id) : "";
-        if (!contractGid) throw new Error("missing_contract_id");
+        var contractGid = contract && contract.id ? String(contract.id) : '';
+        if (!contractGid) throw new Error('missing_contract_id');
 
         var freqActions =
-          actions.frequency ||
-          (window.__SP.actions && window.__SP.actions.frequency);
+          actions.frequency || (window.__SP.actions && window.__SP.actions.frequency);
 
-        if (!freqActions || typeof freqActions.update !== "function") {
-          if (busy && typeof busy.showToast === "function") {
-            busy.showToast(ui, "Frequency action is not wired yet.", "error");
+        if (!freqActions || typeof freqActions.update !== 'function') {
+          if (busy && typeof busy.showToast === 'function') {
+            busy.showToast(ui, 'Frequency action is not wired yet.', 'error');
           }
           return;
         }
@@ -200,17 +190,14 @@
       }
     });
 
-    var footer = ui.el("div", { class: "sp-modal__footer" }, [
-      btnCancel,
-      btnSave,
-    ]);
+    var footer = ui.el('div', { class: 'sp-modal__footer' }, [btnCancel, btnSave]);
 
     card.appendChild(title);
     card.appendChild(body);
     card.appendChild(footer);
     modalRoot.appendChild(card);
 
-    modalRoot.addEventListener("click", function (e) {
+    modalRoot.addEventListener('click', function (e) {
       if (e.target === modalRoot) close();
     });
 
@@ -230,32 +217,37 @@
       var isReadOnly = !!ctx.isReadOnly;
 
       var cur = getCurrentFromBillingPolicy(contract);
-      var label = cur ? mapToDisplayLabel(cur.interval, cur.intervalCount) : "";
+      var label = cur ? mapToDisplayLabel(cur.interval, cur.intervalCount) : '';
 
       var canChange = !isReadOnly && !!(contract && contract.id);
 
       function onChange() {
-        var sel = cur && mapToDisplayLabel(cur.interval, cur.intervalCount)
-          ? { interval: cur.interval, intervalCount: cur.intervalCount }
-          : { interval: "WEEK", intervalCount: 4 };
+        var sel =
+          cur && mapToDisplayLabel(cur.interval, cur.intervalCount)
+            ? { interval: cur.interval, intervalCount: cur.intervalCount }
+            : { interval: 'WEEK', intervalCount: 4 };
 
         openFrequencyModal(ui, ctx, sel);
       }
 
-      return ui.el("div", { class: "sp-card sp-detail__card" }, [
-        sectionTitle(ui, "Your Schedule", "How often your superfoods are sent."),
-        ui.el("div", { class: "sp-detail__freq" }, [
-          ui.el("div", { class: "sp-detail__freq-value" }, [
-            label ? ("Currently: " + label) : "Billing frequency not available.",
+      return ui.el('div', { class: 'sp-card sp-detail__card' }, [
+        sectionTitle(ui, 'Your Schedule', 'How often your superfoods are sent.'),
+        ui.el('div', { class: 'sp-detail__freq' }, [
+          ui.el('div', { class: 'sp-detail__freq-value' }, [
+            label ? 'Currently: ' + label : 'Billing frequency not available.',
           ]),
         ]),
-        ui.el("div", { class: "sp-detail__actions" }, [
-          canChange ? enabledBtn(ui, "Change frequency", onChange) : disabledBtn(ui, "Change frequency"),
-        ]),
-        ui.el("p", { class: "sp-muted sp-detail__hint" }, [
+        ui.el('div', { class: 'sp-detail__actions sp-detail__actions--stack' }, [
           canChange
-            ? "Choose how often you want deliveries."
-            : (isReadOnly ? "Actions will unlock when available." : "Changing delivery frequency is coming next."),
+            ? enabledBtn(ui, 'Change frequency', onChange)
+            : disabledBtn(ui, 'Change frequency'),
+        ]),
+        ui.el('p', { class: 'sp-muted sp-detail__hint' }, [
+          canChange
+            ? 'Choose how often you want deliveries.'
+            : isReadOnly
+              ? 'Actions will unlock when available.'
+              : 'Changing delivery frequency is coming next.',
         ]),
       ]);
     },

@@ -53,6 +53,8 @@
 
 .sp-cancel__required-sub {
   margin-top: 6px;
+  margin-bottom: 15px;
+  font-size: 17px;
 }
 
 /* Softer, less dominant alert */
@@ -246,4 +248,52 @@
     border: none;
     margin: 0;
   }
+}
+/* Cancel reason step layout */
+.sp-cancel__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: 18px;
+  align-items: start;
+}
+
+.sp-cancel__left {
+  min-width: 0;
+}
+
+.sp-cancel__right {
+  min-width: 0;
+}
+
+/* Reasons: 2-col when no reviews, 1-col when reviews panel is present */
+.sp-cancel__reasons--twocol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sp-cancel__reasons--onecol {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* Remove inline style replacement */
+.sp-itemopt--left {
+  text-align: left;
+}
+
+/* Mobile: stack */
+@media (max-width: 860px) {
+  .sp-cancel__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sp-cancel-confirm__copy {
+  margin-top: 10px;
+}
+
+.sp-cancel-confirm__actions {
+  margin-top: 14px;
 }

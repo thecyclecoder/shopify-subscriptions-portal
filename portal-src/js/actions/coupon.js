@@ -15,6 +15,9 @@
     var parts = s.split('/');
     return parts[parts.length - 1] || s;
   }
+  function toStr(v) {
+    return typeof v === 'string' ? v : v == null ? '' : String(v);
+  }
 
   function s(v) {
     return typeof v === 'string' ? v.trim() : '';
@@ -23,6 +26,31 @@
   function toNum(v, fallback) {
     var n = Number(v);
     return isFinite(n) ? n : fallback == null ? 0 : fallback;
+  }
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function trackAction(actionName, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.portalAction !== 'function') return;
+      a.portalAction(actionName, extra || {});
+    } catch (e) {}
+  }
+
+  function trackActionResult(actionName, ok, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+      a.send(
+        'portal_action_result',
+        Object.assign(
+          { action: String(actionName || ''), status: ok ? 'success' : 'error' },
+          extra || {}
+        )
+      );
+    } catch (e) {}
   }
 
   // ---- failed code memory --------------------------------------------------
@@ -343,7 +371,10 @@
         async function () {
           try {
             var mode = s(input.mode);
+            var actionName = mode === 'remove' ? 'remove_coupon' : 'apply_coupon';
             if (mode !== 'apply' && mode !== 'remove') throw new Error('invalid_mode');
+
+            trackAction(actionName, { status: 'attempt' });
 
             var contractGid = input.contractId;
             if (!contractGid) throw new Error('missing_contractId');
@@ -399,7 +430,8 @@
               try {
                 busy.showToast(ui, 'Coupon removed.', 'success');
               } catch (_) {}
-
+              trackAction(actionName, { status: 'success' });
+              trackActionResult(actionName, true);
               return { ok: true, contract: resultR.contract || null, patch: patchR };
             }
 
@@ -477,9 +509,14 @@
             try {
               busy.showToast(ui, 'Coupon applied.', 'success');
             } catch (_) {}
-
+            trackAction(actionName, { status: 'success' });
+            trackActionResult(actionName, true);
             return { ok: true, contract: resultA.contract || null, patch: patchA };
           } catch (e) {
+            trackAction(actionName, { status: 'error' });
+            trackActionResult(actionName, false, {
+              reason: toStr(e && e.message),
+            });
             var code = String(e && e.message ? e.message : e);
 
             var msg = toastForCouponError(code);

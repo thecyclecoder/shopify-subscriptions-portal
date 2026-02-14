@@ -3,31 +3,57 @@
   window.__SP = window.__SP || {};
   window.__SP.actions = window.__SP.actions || {};
 
-  var SUBS_CACHE_KEY = "__sp_subscriptions_cache_v2";
-  var RECENT_SHIP_KEY_PREFIX = "__sp_recent_shipaddr__";
+  var SUBS_CACHE_KEY = '__sp_subscriptions_cache_v2';
+  var RECENT_SHIP_KEY_PREFIX = '__sp_recent_shipaddr__';
+
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function trackAction(actionName, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.portalAction !== 'function') return;
+      a.portalAction(actionName, extra || {});
+    } catch (e) {}
+  }
+
+  function trackActionResult(actionName, ok, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+      a.send(
+        'portal_action_result',
+        Object.assign(
+          { action: String(actionName || ''), status: ok ? 'success' : 'error' },
+          extra || {}
+        )
+      );
+    } catch (e) {}
+  }
 
   // ---------------------------------------------------------------------------
   // tiny helpers
   // ---------------------------------------------------------------------------
 
   function shortId(gid) {
-    var s = String(gid || "");
-    if (!s) return "";
-    var parts = s.split("/");
+    var s = String(gid || '');
+    if (!s) return '';
+    var parts = s.split('/');
     return parts[parts.length - 1] || s;
   }
 
   function requiredTrim(v) {
-    return String(v == null ? "" : v).trim();
+    return String(v == null ? '' : v).trim();
   }
 
   function toStr(v) {
-    return typeof v === "string" ? v : v == null ? "" : String(v);
+    return typeof v === 'string' ? v : v == null ? '' : String(v);
   }
 
   function shallowClone(obj) {
     var out = {};
-    for (var k in (obj || {})) out[k] = obj[k];
+    for (var k in obj || {}) out[k] = obj[k];
     return out;
   }
 
@@ -37,9 +63,9 @@
   // ---------------------------------------------------------------------------
 
   function looksLikeSubsCacheEntry(entry) {
-    if (!entry || typeof entry !== "object") return false;
-    if (!entry.ts || typeof entry.ts !== "number") return false;
-    if (!entry.data || typeof entry.data !== "object") return false;
+    if (!entry || typeof entry !== 'object') return false;
+    if (!entry.ts || typeof entry.ts !== 'number') return false;
+    if (!entry.data || typeof entry.data !== 'object') return false;
     if (entry.data.ok !== true) return false;
     if (!Array.isArray(entry.data.contracts)) return false;
     return true;
@@ -120,7 +146,7 @@
   // ---------------------------------------------------------------------------
 
   function recentShipKey(contractGid) {
-    return RECENT_SHIP_KEY_PREFIX + String(shortId(contractGid) || "");
+    return RECENT_SHIP_KEY_PREFIX + String(shortId(contractGid) || '');
   }
 
   function formatAddressLine(payload) {
@@ -133,11 +159,11 @@
     var st = requiredTrim(payload.provinceCode);
     var zip = requiredTrim(payload.zip);
 
-    var name = [first, last].filter(Boolean).join(" ");
-    var line1 = a1 + (a2 ? (", " + a2) : "");
-    var line2 = [city, st, zip].filter(Boolean).join(" ");
+    var name = [first, last].filter(Boolean).join(' ');
+    var line1 = a1 + (a2 ? ', ' + a2 : '');
+    var line2 = [city, st, zip].filter(Boolean).join(' ');
 
-    return [name, line1, line2].filter(Boolean).join(" • ");
+    return [name, line1, line2].filter(Boolean).join(' • ');
   }
 
   function saveRecentAddress(contractGid, payload) {
@@ -170,11 +196,11 @@
   // ---------------------------------------------------------------------------
 
   function getCustomerFromRoot() {
-    var root = document.querySelector(".subscriptions-portal");
+    var root = document.querySelector('.subscriptions-portal');
     if (!root) return {};
     return {
-      firstName: root.getAttribute("data-first-name") || "",
-      lastName: root.getAttribute("data-last-name") || "",
+      firstName: root.getAttribute('data-first-name') || '',
+      lastName: root.getAttribute('data-last-name') || '',
     };
   }
 
@@ -183,39 +209,79 @@
   // ---------------------------------------------------------------------------
 
   function stateSelect(ui, label, value, required) {
-    var select = ui.el("select", { class: "sp-select" }, []);
+    var select = ui.el('select', { class: 'sp-select' }, []);
 
     if (required) {
-      select.setAttribute("required", "required");
-      select.setAttribute("aria-required", "true");
+      select.setAttribute('required', 'required');
+      select.setAttribute('aria-required', 'true');
     }
 
     var states = [
-      ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
-      ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
-      ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"], ["ID", "Idaho"],
-      ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"], ["KS", "Kansas"],
-      ["KY", "Kentucky"], ["LA", "Louisiana"], ["ME", "Maine"], ["MD", "Maryland"],
-      ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
-      ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"],
-      ["NH", "New Hampshire"], ["NJ", "New Jersey"], ["NM", "New Mexico"], ["NY", "New York"],
-      ["NC", "North Carolina"], ["ND", "North Dakota"], ["OH", "Ohio"], ["OK", "Oklahoma"],
-      ["OR", "Oregon"], ["PA", "Pennsylvania"], ["PR", "Puerto Rico"], ["RI", "Rhode Island"],
-      ["SC", "South Carolina"], ["SD", "South Dakota"], ["TN", "Tennessee"], ["TX", "Texas"],
-      ["UT", "Utah"], ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"],
-      ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"],
+      ['AL', 'Alabama'],
+      ['AK', 'Alaska'],
+      ['AZ', 'Arizona'],
+      ['AR', 'Arkansas'],
+      ['CA', 'California'],
+      ['CO', 'Colorado'],
+      ['CT', 'Connecticut'],
+      ['DE', 'Delaware'],
+      ['FL', 'Florida'],
+      ['GA', 'Georgia'],
+      ['HI', 'Hawaii'],
+      ['ID', 'Idaho'],
+      ['IL', 'Illinois'],
+      ['IN', 'Indiana'],
+      ['IA', 'Iowa'],
+      ['KS', 'Kansas'],
+      ['KY', 'Kentucky'],
+      ['LA', 'Louisiana'],
+      ['ME', 'Maine'],
+      ['MD', 'Maryland'],
+      ['MA', 'Massachusetts'],
+      ['MI', 'Michigan'],
+      ['MN', 'Minnesota'],
+      ['MS', 'Mississippi'],
+      ['MO', 'Missouri'],
+      ['MT', 'Montana'],
+      ['NE', 'Nebraska'],
+      ['NV', 'Nevada'],
+      ['NH', 'New Hampshire'],
+      ['NJ', 'New Jersey'],
+      ['NM', 'New Mexico'],
+      ['NY', 'New York'],
+      ['NC', 'North Carolina'],
+      ['ND', 'North Dakota'],
+      ['OH', 'Ohio'],
+      ['OK', 'Oklahoma'],
+      ['OR', 'Oregon'],
+      ['PA', 'Pennsylvania'],
+      ['PR', 'Puerto Rico'],
+      ['RI', 'Rhode Island'],
+      ['SC', 'South Carolina'],
+      ['SD', 'South Dakota'],
+      ['TN', 'Tennessee'],
+      ['TX', 'Texas'],
+      ['UT', 'Utah'],
+      ['VT', 'Vermont'],
+      ['VA', 'Virginia'],
+      ['WA', 'Washington'],
+      ['WV', 'West Virginia'],
+      ['WI', 'Wisconsin'],
+      ['WY', 'Wyoming'],
     ];
 
-    select.appendChild(ui.el("option", { value: "" }, ["Select a state"]));
+    select.appendChild(ui.el('option', { value: '' }, ['Select a state']));
     for (var i = 0; i < states.length; i++) {
-      select.appendChild(ui.el("option", { value: states[i][0] }, [states[i][1]]));
+      select.appendChild(ui.el('option', { value: states[i][0] }, [states[i][1]]));
     }
 
-    var v = String(value || "").trim().toUpperCase();
+    var v = String(value || '')
+      .trim()
+      .toUpperCase();
     if (v) select.value = v;
 
-    var wrap = ui.el("label", { class: "sp-field" }, [
-      ui.el("div", { class: "sp-field__label" }, [label + (required ? " *" : "")]),
+    var wrap = ui.el('label', { class: 'sp-field' }, [
+      ui.el('div', { class: 'sp-field__label' }, [label + (required ? ' *' : '')]),
       select,
     ]);
 
@@ -224,30 +290,36 @@
 
   function openModal(ui, opts) {
     opts = opts || {};
-    var onClose = typeof opts.onClose === "function" ? opts.onClose : function () {};
+    var onClose = typeof opts.onClose === 'function' ? opts.onClose : function () {};
 
-    var overlay = ui.el("div", { class: "sp-modal" }, []);
-    var card = ui.el("div", { class: "sp-modal__card" }, []);
+    var overlay = ui.el('div', { class: 'sp-modal' }, []);
+    var card = ui.el('div', { class: 'sp-modal__card' }, []);
     overlay.appendChild(card);
 
-    var title = ui.el("div", { class: "sp-modal__title" }, ["Change shipping address"]);
-    var body = ui.el("div", { class: "sp-modal__body" }, []);
-    var footer = ui.el("div", { class: "sp-modal__footer" }, []);
+    var title = ui.el('div', { class: 'sp-modal__title' }, ['Change shipping address']);
+    var body = ui.el('div', { class: 'sp-modal__body' }, []);
+    var footer = ui.el('div', { class: 'sp-modal__footer' }, []);
     card.appendChild(title);
     card.appendChild(body);
     card.appendChild(footer);
 
     function close() {
-      try { if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); } catch (e) {}
-      try { document.body.classList.remove("sp-modal-open"); } catch (e) {}
+      try {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      } catch (e) {}
+      try {
+        document.body.classList.remove('sp-modal-open');
+      } catch (e) {}
       onClose();
     }
 
-    overlay.addEventListener("click", function (e) {
+    overlay.addEventListener('click', function (e) {
       if (e && e.target === overlay) close();
     });
 
-    try { document.body.classList.add("sp-modal-open"); } catch (e) {}
+    try {
+      document.body.classList.add('sp-modal-open');
+    } catch (e) {}
     document.body.appendChild(overlay);
 
     return { overlay: overlay, card: card, body: body, footer: footer, close: close };
@@ -255,23 +327,23 @@
 
   function field(ui, label, placeholder, value, required, autocomplete) {
     var attrs = {
-      class: "sp-input",
-      type: "text",
-      placeholder: placeholder || "",
-      value: value || "",
+      class: 'sp-input',
+      type: 'text',
+      placeholder: placeholder || '',
+      value: value || '',
     };
 
     if (autocomplete) attrs.autocomplete = autocomplete;
 
     if (required) {
       attrs.required = true;
-      attrs["aria-required"] = "true";
+      attrs['aria-required'] = 'true';
     }
 
-    var input = ui.el("input", attrs);
+    var input = ui.el('input', attrs);
 
-    var wrap = ui.el("label", { class: "sp-field" }, [
-      ui.el("div", { class: "sp-field__label" }, [label + (required ? " *" : "")]),
+    var wrap = ui.el('label', { class: 'sp-field' }, [
+      ui.el('div', { class: 'sp-field__label' }, [label + (required ? ' *' : '')]),
       input,
     ]);
 
@@ -284,7 +356,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptionDetail &&
-        typeof window.__SP.screens.subscriptionDetail.render === "function"
+        typeof window.__SP.screens.subscriptionDetail.render === 'function'
       ) {
         window.__SP.screens.subscriptionDetail.render();
         return;
@@ -296,7 +368,7 @@
         window.__SP &&
         window.__SP.screens &&
         window.__SP.screens.subscriptions &&
-        typeof window.__SP.screens.subscriptions.render === "function"
+        typeof window.__SP.screens.subscriptions.render === 'function'
       ) {
         window.__SP.screens.subscriptions.render();
         return;
@@ -309,18 +381,20 @@
   // ---------------------------------------------------------------------------
 
   function applyAddressPatchToContract(contract, patchAddress) {
-    var base = (contract && typeof contract === "object") ? contract : {};
+    var base = contract && typeof contract === 'object' ? contract : {};
     var next = shallowClone(base);
 
     var dm =
-      (next.deliveryMethod && typeof next.deliveryMethod === "object")
+      next.deliveryMethod && typeof next.deliveryMethod === 'object'
         ? shallowClone(next.deliveryMethod)
         : {};
 
     dm.address = shallowClone(patchAddress || {});
     next.deliveryMethod = dm;
 
-    try { next.updatedAt = new Date().toISOString(); } catch (e) {}
+    try {
+      next.updatedAt = new Date().toISOString();
+    } catch (e) {}
 
     return next;
   }
@@ -329,17 +403,22 @@
   // Action: Change Shipping Address
   // ---------------------------------------------------------------------------
 
-  window.__SP.actions.changeShippingAddress = function changeShippingAddress(ui, contractGid, initial, defaults) {
+  window.__SP.actions.changeShippingAddress = function changeShippingAddress(
+    ui,
+    contractGid,
+    initial,
+    defaults
+  ) {
     var busy = window.__SP.actions && window.__SP.actions.busy;
-    if (!busy) throw new Error("busy_not_loaded");
+    if (!busy) throw new Error('busy_not_loaded');
 
     initial = initial || {};
     defaults = defaults || {};
 
     var modal = openModal(ui, {});
-    var errBox = ui.el("div", { class: "sp-alert sp-alert--error", style: "display:none;" }, [
-      ui.el("div", { class: "sp-alert__title" }, ["Check your address"]),
-      ui.el("div", { class: "sp-alert__body sp-muted" }, [""]),
+    var errBox = ui.el('div', { class: 'sp-alert sp-alert--error', style: 'display:none;' }, [
+      ui.el('div', { class: 'sp-alert__title' }, ['Check your address']),
+      ui.el('div', { class: 'sp-alert__body sp-muted' }, ['']),
     ]);
     modal.body.appendChild(errBox);
 
@@ -347,66 +426,28 @@
 
     var fFirst = field(
       ui,
-      "First name",
-      "John",
-      toStr(customer.firstName || ""),
+      'First name',
+      'John',
+      toStr(customer.firstName || ''),
       true,
-      "given-name"
+      'given-name'
     );
 
-    var fLast = field(
-      ui,
-      "Last name",
-      "Doe",
-      toStr(customer.lastName || ""),
-      true,
-      "family-name"
-    );
+    var fLast = field(ui, 'Last name', 'Doe', toStr(customer.lastName || ''), true, 'family-name');
 
     // Address fields intentionally NOT pre-populated
-    var f1 = field(
-      ui,
-      "Street address",
-      "123 Main St",
-      "",
-      true,
-      "address-line1"
-    );
+    var f1 = field(ui, 'Street address', '123 Main St', '', true, 'address-line1');
 
-    var f2 = field(
-      ui,
-      "Apt / Ste (optional)",
-      "Apt 4B",
-      "",
-      false,
-      "address-line2"
-    );
+    var f2 = field(ui, 'Apt / Ste (optional)', 'Apt 4B', '', false, 'address-line2');
 
-    var fCity = field(
-      ui,
-      "City",
-      "Austin",
-      "",
-      true,
-      "address-level2"
-    );
+    var fCity = field(ui, 'City', 'Austin', '', true, 'address-level2');
 
-    var fState = stateSelect(
-      ui,
-      "State",
-      "",
-      true
-    );
-    try { fState.input.autocomplete = "address-level1"; } catch (e) {}
+    var fState = stateSelect(ui, 'State', '', true);
+    try {
+      fState.input.autocomplete = 'address-level1';
+    } catch (e) {}
 
-    var fZip = field(
-      ui,
-      "Zip",
-      "78701",
-      "",
-      true,
-      "postal-code"
-    );
+    var fZip = field(ui, 'Zip', '78701', '', true, 'postal-code');
 
     modal.body.appendChild(fFirst.wrap);
     modal.body.appendChild(fLast.wrap);
@@ -416,22 +457,23 @@
     modal.body.appendChild(fState.wrap);
     modal.body.appendChild(fZip.wrap);
 
-    var btnCancel = ui.el("button", { type: "button", class: "sp-btn sp-btn--ghost" }, ["Cancel"]);
-    var btnSave = ui.el("button", { type: "button", class: "sp-btn" }, ["Save"]);
+    var btnCancel = ui.el('button', { type: 'button', class: 'sp-btn sp-btn--ghost' }, ['Cancel']);
+    var btnSave = ui.el('button', { type: 'button', class: 'sp-btn' }, ['Save']);
 
     modal.footer.appendChild(btnSave);
     modal.footer.appendChild(btnCancel);
 
-    btnCancel.addEventListener("click", modal.close);
+    btnCancel.addEventListener('click', modal.close);
 
     function showError(msg) {
       try {
-        errBox.style.display = "";
-        errBox.querySelector(".sp-alert__body").textContent = msg || "Please check the fields and try again.";
+        errBox.style.display = '';
+        errBox.querySelector('.sp-alert__body').textContent =
+          msg || 'Please check the fields and try again.';
       } catch (e) {}
     }
 
-    btnSave.addEventListener("click", function () {
+    btnSave.addEventListener('click', function () {
       var firstName = requiredTrim(fFirst.input.value);
       var lastName = requiredTrim(fLast.input.value);
       var address1 = requiredTrim(f1.input.value);
@@ -440,18 +482,20 @@
       var provinceCode = requiredTrim(fState.input.value);
       var zip = requiredTrim(fZip.input.value);
 
-      if (!firstName) return showError("First name is required.");
-      if (!lastName) return showError("Last name is required.");
-      if (!address1) return showError("Street address is required.");
-      if (!city) return showError("City is required.");
-      if (!provinceCode) return showError("State is required.");
-      if (!zip) return showError("Zip is required.");
+      if (!firstName) return showError('First name is required.');
+      if (!lastName) return showError('Last name is required.');
+      if (!address1) return showError('Street address is required.');
+      if (!city) return showError('City is required.');
+      if (!provinceCode) return showError('State is required.');
+      if (!zip) return showError('Zip is required.');
 
       return busy.withBusy(
         ui,
         async function () {
           try {
             var contractId = Number(shortId(contractGid));
+
+            trackAction('change_shipping_address', { status: 'attempt' });
 
             var payload = {
               contractId: contractId,
@@ -462,22 +506,22 @@
               city: city,
               provinceCode: provinceCode,
               zip: zip,
-              countryCode: defaults.countryCode || "US",
-              country: defaults.country || "United States",
-              methodType: defaults.methodType || "SHIPPING",
+              countryCode: defaults.countryCode || 'US',
+              country: defaults.country || 'United States',
+              methodType: defaults.methodType || 'SHIPPING',
             };
 
-            var resp = await window.__SP.api.postJson("address", payload);
+            var resp = await window.__SP.api.postJson('address', payload);
 
             if (!resp || resp.ok === false) {
-              throw new Error((resp && resp.error) ? resp.error : "address_update_failed");
+              throw new Error(resp && resp.error ? resp.error : 'address_update_failed');
             }
 
             // Prefer resp.patch.address; fallback to resp.address; fallback to modal payload
             var patchAddress =
-              (resp.patch && resp.patch.address && typeof resp.patch.address === "object")
+              resp.patch && resp.patch.address && typeof resp.patch.address === 'object'
                 ? resp.patch.address
-                : (resp.address && typeof resp.address === "object")
+                : resp.address && typeof resp.address === 'object'
                   ? resp.address
                   : {
                       firstName: payload.firstName,
@@ -498,29 +542,40 @@
 
             var wrote = upsertContractIntoCache(patched);
             if (!wrote) {
-              try { console.warn("[changeShippingAddress] failed to write cache", SUBS_CACHE_KEY); } catch (e) {}
+              try {
+                console.warn('[changeShippingAddress] failed to write cache', SUBS_CACHE_KEY);
+              } catch (e) {}
             }
 
             // Optional "recent updated" marker (not required by detail UI yet)
             saveRecentAddress(contractGid, patchAddress);
 
             var nice = formatAddressLine(patchAddress);
-            busy.showToast(ui, "Shipping address updated: " + nice, "success");
+            busy.showToast(ui, 'Shipping address updated: ' + nice, 'success');
 
             modal.close();
             refreshCurrentScreen();
-
+            trackAction('change_shipping_address', { status: 'success' });
+            trackActionResult('change_shipping_address', true);
             return { ok: true, contract: patched, patch: patchAddress };
           } catch (e) {
-            showError("We couldn’t update that address. Please double-check it and try again.");
-            try { busy.showToast(ui, "Sorry — we couldn’t update that address.", "error"); } catch (_) {}
+            showError('We couldn’t update that address. Please double-check it and try again.');
+            try {
+              busy.showToast(ui, 'Sorry — we couldn’t update that address.', 'error');
+            } catch (_) {}
+            trackAction('change_shipping_address', { status: 'error' });
+            trackActionResult('change_shipping_address', false, {
+              reason: toStr(e && e.message),
+            });
             return { ok: false, error: String(e && e.message ? e.message : e) };
           }
         },
-        "Updating your shipping address…"
+        'Updating your shipping address…'
       );
     });
 
-    try { f1.input.focus(); } catch (e) {}
+    try {
+      f1.input.focus();
+    } catch (e) {}
   };
 })();

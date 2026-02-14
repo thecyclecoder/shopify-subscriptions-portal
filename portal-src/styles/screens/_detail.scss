@@ -531,3 +531,405 @@
 .sp-line__panel {
   margin-top: 5px;
 }
+/* =========================================================
+   Reviews Card
+========================================================= */
+
+.sp-reviews {
+  position: relative;
+}
+
+.sp-reviews--hidden {
+  display: none;
+}
+
+.sp-reviews__inner {
+  margin-top: 6px;
+  transition: opacity 180ms ease-in-out;
+}
+
+.sp-reviews__fade--out {
+  opacity: 0;
+}
+
+.sp-reviews__fade--in {
+  opacity: 1;
+}
+
+/* =========================================================
+   Title (smart_quote)
+========================================================= */
+
+.sp-reviews__title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 8px;
+  color: #111;
+}
+
+/* =========================================================
+   Body (content)
+========================================================= */
+
+.sp-reviews__body {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+/* =========================================================
+   Read full review link
+========================================================= */
+
+.sp-reviews__actions {
+  margin-bottom: 12px;
+}
+
+.sp-reviews__link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2d6cdf;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sp-reviews__link:hover {
+  text-decoration: underline;
+}
+
+.sp-reviews__link--hidden {
+  display: none;
+}
+
+/* =========================================================
+   Footer Meta (author + verified)
+========================================================= */
+
+.sp-reviews__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.sp-reviews__author {
+  font-weight: 500;
+  color: #222;
+}
+
+/* Verified badge */
+
+.sp-reviews__verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #2d6cdf;
+  font-weight: 500;
+}
+
+.sp-reviews__verifiedicon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 50%;
+  background: #2d6cdf;
+  color: #fff;
+  line-height: 1;
+}
+
+.sp-reviews__verifiedtext {
+  font-size: 12px;
+}
+
+/* =========================================================
+   Optional polish (subtle card enhancement)
+========================================================= */
+
+.sp-card.sp-reviews {
+  overflow: hidden;
+}
+
+/* Smooth fade on initial appearance */
+.sp-reviews:not(.sp-reviews--hidden) {
+  animation: spReviewsFadeIn 220ms ease-out;
+}
+
+@keyframes spReviewsFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reviews nav */
+.sp-reviews__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sp-reviews__meta-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sp-reviews__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-reviews__nav--hidden {
+  display: none;
+}
+
+.sp-reviews__navbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sp-reviews__navbtn:hover {
+  border-color: #d9d9d9;
+}
+
+.sp-reviews__navbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Stars */
+.sp-reviews__stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.sp-reviews__star {
+  width: 16px;
+  height: 16px;
+  fill: #f5b301; /* gold */
+}
+
+/* Title with quote icon */
+.sp-reviews__title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: #111;
+  font-weight: 650;
+  line-height: 1.25;
+  font-size: 18px;
+}
+
+.sp-reviews__quoteiconwrap {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.sp-reviews__quoteicon {
+  width: 22px;
+  height: 22px;
+  fill: #e7e7e7; /* subtle */
+}
+
+.sp-reviews__titletext {
+  display: inline;
+}
+
+/* Body quoted */
+.sp-reviews__body {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+/* Nav chevrons */
+.sp-reviews__navbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sp-reviews__navbtn:hover {
+  border-color: #d9d9d9;
+}
+
+.sp-reviews__navbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sp-reviews__chev {
+  width: 18px;
+  height: 18px;
+}
+
+/* Keep the footer layout */
+.sp-reviews__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sp-reviews__meta-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sp-reviews__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-reviews__nav--hidden {
+  display: none;
+}
+
+.add-product-row {
+  margin-top: 15px;
+}
+
+.sp-rewards__helper {
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+/* =========================================
+   Rewards Card – Premium / Retention Focus
+========================================= */
+
+.sp-rewards {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle colorful gradient glow background */
+.sp-rewards::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 165, 0, 0.12), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(255, 99, 71, 0.12), transparent 40%);
+  pointer-events: none;
+}
+
+/* Banner row */
+.sp-rewards__banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 174, 66, 0.08), rgba(255, 99, 71, 0.08));
+  border: 1px solid rgba(255, 165, 0, 0.15);
+  margin-top: 12px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Emoji icon */
+.sp-rewards__banner-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Text block */
+.sp-rewards__banner-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.sp-rewards__banner-sub {
+  font-size: 14px;
+}
+
+/* Right-side pill */
+.sp-rewards__pill {
+  margin-left: auto;
+  background: linear-gradient(135deg, #ffb347, #ff7043);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* CTA styling */
+.sp-rewards__cta {
+  width: 100%;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.sp-rewards__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Helper text */
+.sp-rewards__helper {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+/* Stack actions nicely */
+.sp-rewards__actions {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile refinement */
+@media (max-width: 640px) {
+  .sp-rewards__banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sp-rewards__pill {
+    margin-left: 0;
+    margin-top: 6px;
+  }
+}

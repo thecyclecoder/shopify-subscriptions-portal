@@ -21,6 +21,32 @@
     return toStr(v).toLowerCase();
   }
 
+  function getAnalytics() {
+    return (window.__SP && window.__SP.analytics) || null;
+  }
+
+  function trackAction(actionName, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.portalAction !== 'function') return;
+      a.portalAction(actionName, extra || {});
+    } catch (e) {}
+  }
+
+  function trackActionResult(actionName, ok, extra) {
+    try {
+      var a = getAnalytics();
+      if (!a || typeof a.send !== 'function') return;
+      a.send(
+        'portal_action_result',
+        Object.assign(
+          { action: String(actionName || ''), status: ok ? 'success' : 'error' },
+          extra || {}
+        )
+      );
+    } catch (e) {}
+  }
+
   // ---- cache helpers ------------------------------------------------------
 
   function looksLikeSubsCacheEntry(entry) {
@@ -272,6 +298,7 @@
 
     return await busy.withBusy(ui, async function () {
       try {
+        trackAction('cancel', { status: 'attempt' });
         var contractShortId = Number(shortId(contractGid));
         if (!contractShortId) throw new Error('missing_contractId');
 
@@ -299,6 +326,7 @@
         refreshCurrentScreen();
 
         busy.showToast(ui, 'Your subscription has been cancelled.', 'success');
+
         return { ok: true, contract: result.contract || null };
       } catch (e) {
         busy.showToast(
@@ -306,6 +334,8 @@
           'Sorry — we couldn’t cancel your subscription. Please try again.',
           'error'
         );
+        trackAction('cancel', { status: 'error' });
+        trackActionResult('cancel', false, { reason: toStr(e && e.message) });
         return { ok: false, error: String(e && e.message ? e.message : e) };
       }
     });
