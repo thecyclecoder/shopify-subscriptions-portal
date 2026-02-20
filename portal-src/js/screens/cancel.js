@@ -451,6 +451,17 @@
 
   function reasonConfig(images, coupons) {
     return {
+      reached_goals: {
+        title: 'I already reached my goals',
+        offerTitle: 'Keep your results without overstocking',
+        empath:
+          'That’s a win. Maintenance is how you keep it. Most members switch to every 2 months so they stay consistent while keeping subscriber pricing locked in.',
+        primaryHint: 'Maintenance mode',
+        secondaryHint: 'Skip 60 days, keep perks',
+        primary: { type: 'frequency', months: 2, label: 'Switch to every 2 months' },
+        secondary: { type: 'pause', days: 60, label: 'Pause 60 days' },
+        image: safeStr(images.reached_goals || images.maintenance || ''),
+      },
       too_much_product: {
         title: 'I have too much product',
         offerTitle: 'Let’s right-size your deliveries',
@@ -507,18 +518,6 @@
         primary: { type: 'manage_items', label: 'Swap or remove items' },
         secondary: { type: 'pause', days: 30, label: 'Pause 30 days' },
         image: safeStr(images.tired_of_flavor || images.flavor || ''),
-      },
-
-      reached_goals: {
-        title: 'I already reached my goals',
-        offerTitle: 'Keep your results without overstocking',
-        empath:
-          'That’s a win. Maintenance is how you keep it. Most members switch to every 2 months so they stay consistent while keeping subscriber pricing locked in.',
-        primaryHint: 'Maintenance mode',
-        secondaryHint: 'Skip 60 days, keep perks',
-        primary: { type: 'frequency', months: 2, label: 'Switch to every 2 months' },
-        secondary: { type: 'pause', days: 60, label: 'Pause 60 days' },
-        image: safeStr(images.reached_goals || images.maintenance || ''),
       },
 
       shipping_issues: {

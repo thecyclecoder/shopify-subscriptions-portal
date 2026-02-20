@@ -728,12 +728,19 @@
       ui.el(
         'div',
         { class: 'sp-detail__col' },
-        [pauseCardEl, itemsCardEl, frequencyCardEl, couponCardEl, rewardsCardEl].filter(Boolean)
+        [pauseCardEl, itemsCardEl, frequencyCardEl, addonsCardEl].filter(Boolean)
       ),
       ui.el(
         'div',
         { class: 'sp-detail__col' },
-        [addonsCardEl, addressCardEl, shipProtCardEl, reviewsCardEl, cancelCardEl].filter(Boolean)
+        [
+          rewardsCardEl,
+          couponCardEl,
+          addressCardEl,
+          shipProtCardEl,
+          reviewsCardEl,
+          cancelCardEl,
+        ].filter(Boolean)
       ),
     ]);
 
